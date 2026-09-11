@@ -87,7 +87,17 @@ $settings | ConvertTo-Json -Depth 20 | Set-Content -Path $SettingsPath -Encoding
 Write-Host "  merged statusLine into $SettingsPath"
 
 Write-Host "== 5/7: Installing the Nerd Font (JetBrainsMono, $NerdFontVersion) =="
-if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+# Tracks which version this script last installed, since Windows has no
+# reliable "is font version X installed" query of its own (InstalledFontCollection
+# only gives family names, not versions) — without this, a re-run reinstalls
+# every file every time, and each file triggers its own "install this font?"
+# prompt (16 of them for this family). Bump $NerdFontVersion above to force a
+# reinstall; delete this marker file to force one without bumping the version.
+$FontMarker = Join-Path $env:LOCALAPPDATA "claude-config\nerdfont-version.txt"
+if ((Test-Path $FontMarker) -and ((Get-Content $FontMarker -Raw).Trim() -eq $NerdFontVersion)) {
+    Write-Host "  JetBrainsMono Nerd Font $NerdFontVersion already installed, skipping."
+}
+elseif (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
     Write-Warning "winget not found; skipping the Nerd Font install. Install 'App Installer' from the Microsoft Store and re-run this script, or install the font by hand from https://github.com/ryanoasis/nerd-fonts/releases"
 }
 else {
@@ -98,6 +108,12 @@ else {
     Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing
     if (Test-Path $extractPath) { Remove-Item $extractPath -Recurse -Force }
     Expand-Archive -Path $zipPath -DestinationPath $extractPath
+
+    # Files extracted from a downloaded zip carry the Mark-of-the-Web (Internet
+    # security zone); Windows shows a "do you want to install this font?"
+    # prompt per file for zone-marked fonts regardless of the CopyHere flags
+    # below. Unblocking first is what actually makes the install silent.
+    Get-ChildItem -Path $extractPath -Recurse -File | Unblock-File
 
     # Only the base family "JetBrainsMono Nerd Font" (not the Mono/Propo/NL
     # variants, which aren't used here).
@@ -116,6 +132,9 @@ else {
 
     Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
     Remove-Item $extractPath -Recurse -Force -ErrorAction SilentlyContinue
+
+    New-Item -ItemType Directory -Force -Path (Split-Path $FontMarker) | Out-Null
+    Set-Content -Path $FontMarker -Value $NerdFontVersion
     Write-Host "  Set 'JetBrainsMono Nerd Font' as the font in Windows Terminal / VS Code."
 }
 
