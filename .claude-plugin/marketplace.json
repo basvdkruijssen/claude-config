@@ -9,8 +9,8 @@
     {
       "name": "bvdk-pstack-discipline",
       "source": "./plugins/bvdk-pstack-discipline",
-      "description": "Writing-discipline and engineering-principle skills ported from pstack (cursor/plugins), adapted for Claude Code. All skills are user-invoked only.",
-      "version": "1.0.0",
+      "description": "Writing-discipline and engineering-principle skills ported from pstack (cursor/plugins), adapted for Claude Code. All are user-invoked only except unslop, which is model-invoked.",
+      "version": "1.0.1",
       "author": {
         "name": "Bas van der Kruijssen"
       },

@@ -39,10 +39,11 @@ DevOps) and writing. Two skill collections were evaluated:
 ## Why these two sets don't collide
 
 Every skill ported from pstack carries `disable-model-invocation: true` in
-its frontmatter (that was already true upstream, not something added here).
-That means none of the 27 `bvdk-pstack-discipline` skills auto-trigger —
-they only run when you explicitly invoke them (`/unslop`, or
-`@bvdk-pstack-discipline:principle-fix-root-causes`, etc.). mattpocock's
+its frontmatter (that was already true upstream, not something added here),
+**except `unslop`**, which was deliberately flipped to model-invoked since no
+mattpocock skill overlaps with its territory. The other 26 stay user-invoked
+only — they run when you explicitly invoke them (e.g.
+`@bvdk-pstack-discipline:principle-fix-root-causes`). mattpocock's
 model-invoked skills (`tdd`, `code-review`, `diagnosing-bugs`, ...) stay the
 only skills the model reaches for on its own. There's also no functional
 duplication: mattpocock's `tdd` skill was kept as *the* TDD skill; pstack's

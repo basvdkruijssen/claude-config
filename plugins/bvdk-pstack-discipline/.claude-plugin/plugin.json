@@ -1,8 +1,8 @@
 {
   "name": "bvdk-pstack-discipline",
   "displayName": "pstack discipline (ported)",
-  "version": "1.0.0",
-  "description": "27 writing-discipline and engineering-principle skills ported from cursor/plugins' pstack, adapted for Claude Code. Every skill sets disable-model-invocation: true, so none of them auto-trigger — they only run when you explicitly invoke them, which keeps them from competing with auto-invoked skills in other installed plugins (e.g. mattpocock-skills).",
+  "version": "1.0.1",
+  "description": "27 writing-discipline and engineering-principle skills ported from cursor/plugins' pstack, adapted for Claude Code. 26 of the 27 set disable-model-invocation: true, so they only run when explicitly invoked, keeping them from competing with auto-invoked skills in other installed plugins (e.g. mattpocock-skills). unslop is the one exception: it's model-invoked, since no mattpocock skill overlaps with it.",
   "author": {
     "name": "Bas van der Kruijssen",
     "url": "https://github.com/basvdkruijssen"
