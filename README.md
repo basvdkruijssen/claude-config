@@ -13,6 +13,7 @@ rebuilt by hand.
 | `mattpocock-skills` | Engineering + productivity skills (grill-with-docs, tdd, code-review, triage, wayfinder, domain-modeling, ...) | Subscribed via Claude Code's official plugin marketplace. Auto-updates, read-only. |
 | `bvdk-pstack-discipline` (this repo) | 27 writing-discipline and engineering-principle skills ported from pstack | You own it. Update by editing this repo and pushing. |
 | `claude-code/CLAUDE.md` | Global Claude Code instructions | Symlinked from `~/.claude/CLAUDE.md` on each machine. |
+| `claude-code/statusline-context.sh` | Bottom-left context-usage indicator (`12.5k (1.0%)`) | Symlinked from `~/.claude/statusline-context.sh`; merged into `~/.claude/settings.json` via `statusLine`. |
 | `desktop-skills/` | 5 zip-ready skill bundles for Claude Desktop | Manual upload — Desktop has no marketplace mechanism (see below). |
 
 ## Why these two sources, and not more
@@ -58,18 +59,24 @@ so you never have two competing TDD flows installed at once.
 # macOS/Linux
 ./scripts/install-code.sh
 ./scripts/link-global-claude-md.sh
+./scripts/link-statusline.sh
 ```
 
 ```powershell
 # Windows
 .\scripts\install-code.ps1
 .\scripts\link-global-claude-md.ps1   # needs an elevated shell or Developer Mode for the symlink
+.\scripts\link-statusline.ps1         # same symlink requirement
 ```
 
 This adds this repo as a plugin marketplace, installs `bvdk-pstack-discipline`
 from it, installs `mattpocock-skills` from Claude Code's official
-marketplace, and symlinks `claude-code/CLAUDE.md` to `~/.claude/CLAUDE.md`.
-Re-running is safe.
+marketplace, symlinks `claude-code/CLAUDE.md` to `~/.claude/CLAUDE.md`, and
+wires up the context-usage status line. Re-running is safe. The status line
+runs through a bash-compatible shell (Git Bash) regardless of your
+`defaultShell` setting, so `statusline-context.sh` stays a `.sh` on Windows
+too; the merge script only touches the `statusLine` key in `settings.json`,
+every other key is left alone.
 
 Then, **per project repo** (not global, run once per repo):
 
