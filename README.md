@@ -55,8 +55,20 @@ so you never have two competing TDD flows installed at once.
 
 ### Claude Code
 
+First, get this repo onto the machine — `git clone` the first time, `git pull` on one you've already set up:
+
 ```bash
-# macOS/Linux
+git clone https://github.com/basvdkruijssen/claude-config.git
+cd claude-config
+```
+
+`install-code.sh` itself doesn't need this clone (it just tells Claude Code to
+add the marketplace, which clones into Claude Code's own plugin cache), but
+`link-global-claude-md.sh` and `link-statusline.sh` symlink from files inside
+this repo, so they do.
+
+```bash
+# macOS/Linux/containers
 ./scripts/install-code.sh
 ./scripts/link-global-claude-md.sh
 ./scripts/link-statusline.sh
