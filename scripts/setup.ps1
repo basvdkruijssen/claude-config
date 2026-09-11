@@ -25,37 +25,39 @@ claude plugin marketplace add $MarketplaceSource
 claude plugin install "bvdk-pstack-discipline@$MarketplaceName"
 claude plugin install mattpocock-skills
 
-Write-Host "== 3/4: Linking global CLAUDE.md =="
-$ClaudeMdSrc = Join-Path $RepoRoot "claude-code\CLAUDE.md"
-$ClaudeDir = Join-Path $HOME ".claude"
-$ClaudeMdDest = Join-Path $ClaudeDir "CLAUDE.md"
-New-Item -ItemType Directory -Force -Path $ClaudeDir | Out-Null
+# New-Item -ItemType SymbolicLink throws when the shell lacks Developer Mode
+# or elevation, unlike bash's `ln -s` on the same machine, which silently
+# copies instead. Catch that and fall back to a plain copy here too, so both
+# scripts behave the same way and say plainly which one happened: a copy
+# needs this script re-run after every git pull; a symlink applies a pull
+# automatically.
+function Link-OrCopy {
+    param([string]$Src, [string]$Dest)
+    if ((Test-Path $Dest) -and -not (Get-Item $Dest).LinkType) {
+        $ts = Get-Date -Format "yyyyMMddHHmmss"
+        Write-Host "  backing up existing $Dest to $Dest.bak.$ts"
+        Move-Item $Dest "$Dest.bak.$ts"
+    }
+    elseif (Test-Path $Dest) {
+        Remove-Item $Dest -Force
+    }
+    try {
+        New-Item -ItemType SymbolicLink -Path $Dest -Target $Src -ErrorAction Stop | Out-Null
+        Write-Host "  linked $Dest -> $Src (a git pull applies future changes automatically)"
+    }
+    catch {
+        Copy-Item -Path $Src -Destination $Dest -Force
+        Write-Host "  copied $Src -> $Dest (this machine can't create symlinks without Developer Mode or an elevated shell; re-run this script after every git pull to pick up changes)"
+    }
+}
 
-if ((Test-Path $ClaudeMdDest) -and -not (Get-Item $ClaudeMdDest).LinkType) {
-    $ts = Get-Date -Format "yyyyMMddHHmmss"
-    Write-Host "  backing up existing $ClaudeMdDest to $ClaudeMdDest.bak.$ts"
-    Move-Item $ClaudeMdDest "$ClaudeMdDest.bak.$ts"
-}
-elseif (Test-Path $ClaudeMdDest) {
-    Remove-Item $ClaudeMdDest -Force
-}
-New-Item -ItemType SymbolicLink -Path $ClaudeMdDest -Target $ClaudeMdSrc | Out-Null
-Write-Host "  linked $ClaudeMdDest -> $ClaudeMdSrc"
+Write-Host "== 3/4: Linking global CLAUDE.md =="
+$ClaudeDir = Join-Path $HOME ".claude"
+New-Item -ItemType Directory -Force -Path $ClaudeDir | Out-Null
+Link-OrCopy -Src (Join-Path $RepoRoot "claude-code\CLAUDE.md") -Dest (Join-Path $ClaudeDir "CLAUDE.md")
 
 Write-Host "== 4/4: Wiring up the status line =="
-$StatuslineSrc = Join-Path $RepoRoot "claude-code\statusline-context.sh"
-$StatuslineDest = Join-Path $ClaudeDir "statusline-context.sh"
-
-if ((Test-Path $StatuslineDest) -and -not (Get-Item $StatuslineDest).LinkType) {
-    $ts = Get-Date -Format "yyyyMMddHHmmss"
-    Write-Host "  backing up existing $StatuslineDest to $StatuslineDest.bak.$ts"
-    Move-Item $StatuslineDest "$StatuslineDest.bak.$ts"
-}
-elseif (Test-Path $StatuslineDest) {
-    Remove-Item $StatuslineDest -Force
-}
-New-Item -ItemType SymbolicLink -Path $StatuslineDest -Target $StatuslineSrc | Out-Null
-Write-Host "  linked $StatuslineDest -> $StatuslineSrc"
+Link-OrCopy -Src (Join-Path $RepoRoot "claude-code\statusline-context.sh") -Dest (Join-Path $ClaudeDir "statusline-context.sh")
 
 $SettingsPath = Join-Path $ClaudeDir "settings.json"
 if (-not (Test-Path $SettingsPath)) {

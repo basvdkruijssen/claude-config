@@ -74,7 +74,7 @@ cd claude-config
 ```
 
 ```powershell
-# Windows: needs an elevated shell or Developer Mode for the symlinks
+# Windows
 .\scripts\setup.ps1
 ```
 
@@ -83,6 +83,13 @@ marketplace, installs `bvdk-pstack-discipline` from it, installs
 `mattpocock-skills` from Claude Code's official marketplace, symlinks
 `claude-code/CLAUDE.md` to `~/.claude/CLAUDE.md`, and wires up the status
 line. It's safe to re-run.
+
+On Windows, that symlink needs Developer Mode (Settings → Privacy & security
+→ For developers) or an elevated shell. Without either, the script falls
+back to a plain copy and says so explicitly; a copy means step 1's `git
+pull` won't reach `~/.claude` on its own, so re-run `./scripts/setup.ps1`
+after every pull to apply changes. A real symlink applies a pull
+automatically, with nothing further to run.
 
 Then, once per project repo, not globally:
 

@@ -23,28 +23,35 @@ claude plugin marketplace add "$MARKETPLACE_SOURCE"
 claude plugin install "bvdk-pstack-discipline@${MARKETPLACE_NAME}"
 claude plugin install mattpocock-skills
 
+# Plain `ln -sf` on Git Bash for Windows never even attempts a real symlink
+# unless MSYS=winsymlinks:nativestrict is set; without it, it silently
+# copies the file and still reports success. With it set, a real symlink
+# needs Developer Mode or an elevated shell, and fails loudly if neither is
+# available. Either way, fall back to a plain copy rather than aborting the
+# whole script, but say plainly which one happened: a copy needs this
+# script re-run after every git pull to pick up changes; a symlink applies
+# a git pull automatically.
+link_or_copy() {
+  local src="$1" dest="$2"
+  if [ -e "$dest" ] && [ ! -L "$dest" ]; then
+    ts=$(date +%Y%m%d%H%M%S)
+    echo "  backing up existing $dest to $dest.bak.$ts"
+    mv "$dest" "$dest.bak.$ts"
+  fi
+  if MSYS=winsymlinks:nativestrict ln -sf "$src" "$dest" 2>/dev/null && [ -L "$dest" ]; then
+    echo "  linked $dest -> $src (a git pull applies future changes automatically)"
+  else
+    cp "$src" "$dest"
+    echo "  copied $src -> $dest (this machine can't create symlinks without Developer Mode or an elevated shell; re-run this script after every git pull to pick up changes)"
+  fi
+}
+
 echo "== 3/4: Linking global CLAUDE.md =="
-CLAUDE_MD_SRC="$REPO_ROOT/claude-code/CLAUDE.md"
-CLAUDE_MD_DEST="$HOME/.claude/CLAUDE.md"
 mkdir -p "$HOME/.claude"
-if [ -e "$CLAUDE_MD_DEST" ] && [ ! -L "$CLAUDE_MD_DEST" ]; then
-  ts=$(date +%Y%m%d%H%M%S)
-  echo "  backing up existing $CLAUDE_MD_DEST to $CLAUDE_MD_DEST.bak.$ts"
-  mv "$CLAUDE_MD_DEST" "$CLAUDE_MD_DEST.bak.$ts"
-fi
-ln -sf "$CLAUDE_MD_SRC" "$CLAUDE_MD_DEST"
-echo "  linked $CLAUDE_MD_DEST -> $CLAUDE_MD_SRC"
+link_or_copy "$REPO_ROOT/claude-code/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
 
 echo "== 4/4: Wiring up the status line =="
-STATUSLINE_SRC="$REPO_ROOT/claude-code/statusline-context.sh"
-STATUSLINE_DEST="$HOME/.claude/statusline-context.sh"
-if [ -e "$STATUSLINE_DEST" ] && [ ! -L "$STATUSLINE_DEST" ]; then
-  ts=$(date +%Y%m%d%H%M%S)
-  echo "  backing up existing $STATUSLINE_DEST to $STATUSLINE_DEST.bak.$ts"
-  mv "$STATUSLINE_DEST" "$STATUSLINE_DEST.bak.$ts"
-fi
-ln -sf "$STATUSLINE_SRC" "$STATUSLINE_DEST"
-echo "  linked $STATUSLINE_DEST -> $STATUSLINE_SRC"
+link_or_copy "$REPO_ROOT/claude-code/statusline-context.sh" "$HOME/.claude/statusline-context.sh"
 
 SETTINGS="$HOME/.claude/settings.json"
 [ -f "$SETTINGS" ] || echo '{}' > "$SETTINGS"
