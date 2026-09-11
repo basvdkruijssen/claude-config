@@ -20,7 +20,7 @@ commands) and [`CLAUDE.md`](./CLAUDE.md) for the merged repo's architecture.
 | `mattpocock-skills` | Engineering and productivity skills (grill-with-docs, tdd, code-review, triage, wayfinder, domain-modeling, and more) | Subscribed through Claude Code's official plugin marketplace. Auto-updates, read-only. |
 | `bvdk-pstack-discipline` (this repo) | 27 writing-discipline and engineering-principle skills ported from pstack | You own it. Update by editing this repo and pushing. |
 | `claude-code/CLAUDE.md` | Global Claude Code instructions | Symlinked from `~/.claude/CLAUDE.md` on each machine. |
-| `claude-code/statusline-context.sh` | Status line: model, directory, git branch, context usage, and 5h/7d rate-limit usage | Symlinked from `~/.claude/statusline-context.sh`; merged into `~/.claude/settings.json` through `statusLine`. |
+| `claude-code/statusline-context.sh` | Status line: model + reasoning effort, directory, git branch, context usage, and 5h/7d rate-limit usage | Symlinked from `~/.claude/statusline-context.sh`; merged into `~/.claude/settings.json` through `statusLine`. |
 | `desktop-skills/` | 5 zip-ready skill bundles for Claude Desktop | Manual upload. Desktop has no marketplace mechanism (see below). |
 | `home/` + `.chezmoiroot` | Cross-shell Starship prompt (PowerShell 7, bash, zsh), plus Terraform/Azure shell aliases | Deployed to `~` on every machine via [chezmoi](https://www.chezmoi.io), driven by `chezmoi init --apply` against this same repo. See [`docs/starship-prompt.md`](./docs/starship-prompt.md). |
 

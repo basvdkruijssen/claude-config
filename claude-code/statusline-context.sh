@@ -98,7 +98,8 @@ extract_fields() {
       (.rate_limits.five_hour.used_percentage // empty),
       (.rate_limits.five_hour.resets_at // empty),
       (.rate_limits.seven_day.used_percentage // empty),
-      (.rate_limits.seven_day.resets_at // empty)
+      (.rate_limits.seven_day.resets_at // empty),
+      (.effort.level // empty)
     ] | @tsv'
   elif [ -n "$PY" ]; then
     echo "$input" | "$PY" -c '
@@ -125,6 +126,7 @@ fields = [
     g("rate_limits", "five_hour", "resets_at"),
     g("rate_limits", "seven_day", "used_percentage"),
     g("rate_limits", "seven_day", "resets_at"),
+    g("effort", "level"),
 ]
 print("\t".join(str(f) for f in fields))
 '
@@ -144,7 +146,7 @@ if [ -z "$JQ" ] && [ -z "$PY" ]; then
   exit 0
 fi
 
-IFS=$'\t' read -r model_name cwd_path used_tokens used_pct five_pct five_reset seven_pct seven_reset <<EOF
+IFS=$'\t' read -r model_name cwd_path used_tokens used_pct five_pct five_reset seven_pct seven_reset effort_level <<EOF
 $(extract_fields)
 EOF
 
@@ -156,6 +158,9 @@ model_str=$(printf "${CYAN}%s${RESET}" "$model_name")
 if [[ "$model_name" =~ ^(.*[^[:space:]])[[:space:]]+\((.*)\)$ ]]; then
   model_str=$(printf "${CYAN}%s ${CYAN_PALE}(%s)${RESET}" \
     "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}")
+fi
+if [ -n "$effort_level" ] && [ "$effort_level" != "null" ]; then
+  model_str=$(printf "%s ${CYAN_PALE}[%s]${RESET}" "$model_str" "$effort_level")
 fi
 
 git_segment=""
