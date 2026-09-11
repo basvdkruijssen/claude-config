@@ -14,16 +14,73 @@ MARKETPLACE_SOURCE="basvdkruijssen/claude-config"
 MARKETPLACE_NAME="bvdk-claude-config"
 DOTFILES_SOURCE="github.com/basvdkruijssen/claude-config"
 
-echo "== 1/7: Checking for the claude CLI =="
-if ! command -v claude >/dev/null 2>&1; then
-  echo "claude not found on PATH. Install Claude Code first: https://code.claude.com" >&2
+TOTAL_STEPS=8
+CURRENT_STEP=0
+
+# Prints a "[#####-----] 3/8" bar, then the step title as a banner. Kept as a
+# plain ASCII bar (rather than e.g. a spinner) since this script's output is
+# also read back from CI logs and piped output, where cursor control codes
+# would just show up as garbage.
+progress_bar() {
+  local step="$1" total="$2" width=30
+  local filled=$(( step * width / total ))
+  local empty=$(( width - filled ))
+  local bar
+  bar="$(printf '%*s' "$filled" '' | tr ' ' '#')"
+  bar+="$(printf '%*s' "$empty" '' | tr ' ' '-')"
+  printf '\n[%s] %d/%d\n' "$bar" "$step" "$total"
+}
+
+step() {
+  CURRENT_STEP=$((CURRENT_STEP + 1))
+  progress_bar "$CURRENT_STEP" "$TOTAL_STEPS"
+  echo "== $CURRENT_STEP/$TOTAL_STEPS: $1 =="
+}
+
+step "Checking dependencies"
+missing_deps=()
+for dep in curl git; do
+  echo "  checking for $dep..."
+  if command -v "$dep" >/dev/null 2>&1; then
+    echo "    found: $(command -v "$dep")"
+  else
+    echo "    not found"
+    missing_deps+=("$dep")
+  fi
+done
+if [ "${#missing_deps[@]}" -gt 0 ]; then
+  echo "Missing required tool(s): ${missing_deps[*]}" >&2
+  echo "Install them first, e.g. on Debian/Ubuntu: sudo apt install ${missing_deps[*]}" >&2
+  echo "On Alpine: apk add ${missing_deps[*]}" >&2
   exit 1
 fi
 
-echo "== 2/7: Installing Claude Code plugins =="
+step "Checking for the claude CLI"
+if command -v claude >/dev/null 2>&1; then
+  echo "  found: $(command -v claude) ($(claude --version 2>/dev/null || echo "version unknown"))"
+else
+  echo "  claude not found on PATH. Installing via the native installer (curl -fsSL https://claude.ai/install.sh | bash)..."
+  curl -fsSL https://claude.ai/install.sh | bash
+  # The native installer places the launcher in ~/.local/bin, which may not
+  # be on PATH yet in this shell (it takes effect for new shells once the
+  # installer's rc-file edit is sourced).
+  export PATH="$HOME/.local/bin:$PATH"
+  if command -v claude >/dev/null 2>&1; then
+    echo "  installed: $(command -v claude)"
+  else
+    echo "claude still not found on PATH after install. Open a new shell and re-run this script, or see https://code.claude.com/docs/en/troubleshoot-install" >&2
+    exit 1
+  fi
+fi
+
+step "Installing Claude Code plugins"
+echo "  adding marketplace $MARKETPLACE_SOURCE..."
 claude plugin marketplace add "$MARKETPLACE_SOURCE"
+echo "  installing bvdk-pstack-discipline@${MARKETPLACE_NAME}..."
 claude plugin install "bvdk-pstack-discipline@${MARKETPLACE_NAME}"
+echo "  installing mattpocock-skills..."
 claude plugin install mattpocock-skills
+echo "  plugins installed."
 
 # Plain `ln -sf` on Git Bash for Windows never even attempts a real symlink
 # unless MSYS=winsymlinks:nativestrict is set; without it, it silently
@@ -48,11 +105,11 @@ link_or_copy() {
   fi
 }
 
-echo "== 3/7: Linking global CLAUDE.md =="
+step "Linking global CLAUDE.md"
 mkdir -p "$HOME/.claude"
 link_or_copy "$REPO_ROOT/claude-code/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
 
-echo "== 4/7: Wiring up the status line =="
+step "Wiring up the status line"
 link_or_copy "$REPO_ROOT/claude-code/statusline-context.sh" "$HOME/.claude/statusline-context.sh"
 
 SETTINGS="$HOME/.claude/settings.json"
@@ -62,6 +119,7 @@ STATUSLINE_JSON='{"type":"command","command":"bash ~/.claude/statusline-context.
 # `command -v python3` can succeed on a broken Windows Store app-execution
 # alias that errors when actually run, so verify each candidate executes
 # before trusting it.
+echo "  looking for jq or python to merge $SETTINGS..."
 PY=""
 for candidate in python3 python; do
   if command -v "$candidate" >/dev/null 2>&1 && "$candidate" -c "1" >/dev/null 2>&1; then
@@ -91,28 +149,32 @@ else
   echo "    \"statusLine\": $STATUSLINE_JSON" >&2
 fi
 
-echo "== 5/7: Nerd Font =="
+step "Nerd Font"
 echo "  The Starship prompt below needs a Nerd Font in your terminal emulator for"
 echo "  icons to render. This isn't automated on macOS/Linux; install one, e.g.:"
 echo "    brew install --cask font-jetbrains-mono-nerd-font   # macOS"
 echo "  On WSL, install the font on the Windows side; the terminal emulator picks"
 echo "  the font, not the Linux guest."
 
-echo "== 6/7: Installing Starship + chezmoi =="
-if ! command -v starship >/dev/null 2>&1; then
-  curl -sS https://starship.rs/install.sh | sh -s -- --yes
+step "Installing Starship + chezmoi"
+if command -v starship >/dev/null 2>&1; then
+  echo "  starship already installed, skipping: $(command -v starship)"
 else
-  echo "  starship already installed, skipping."
+  echo "  installing starship (curl -sS https://starship.rs/install.sh | sh)..."
+  curl -sS https://starship.rs/install.sh | sh -s -- --yes
+  echo "  starship installed."
 fi
 
-if ! command -v chezmoi >/dev/null 2>&1; then
-  sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+if command -v chezmoi >/dev/null 2>&1; then
+  echo "  chezmoi already installed, skipping: $(command -v chezmoi)"
 else
-  echo "  chezmoi already installed, skipping."
+  echo "  installing chezmoi (curl -fsLS get.chezmoi.io | sh)..."
+  sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+  echo "  chezmoi installed to $HOME/.local/bin."
 fi
 export PATH="$HOME/.local/bin:$PATH"
 
-echo "== 7/7: Deploying the Starship prompt and shell dotfiles =="
+step "Deploying the Starship prompt and shell dotfiles"
 # `chezmoi init <repo>` only clones into the source dir if no git repo is
 # there yet; on a machine already set up from the old standalone `starship`
 # repo, it silently keeps using that old remote instead of switching to this
@@ -135,7 +197,9 @@ if [ -d "$CHEZMOI_SRC/.git" ]; then
   esac
 fi
 if [ -z "${SKIP_CHEZMOI_APPLY:-}" ]; then
+  echo "  running: chezmoi init --apply $DOTFILES_SOURCE"
   chezmoi init --apply "$DOTFILES_SOURCE"
+  echo "  dotfiles applied."
 fi
 
 init_line='[ -f "$HOME/.config/shell/init.sh" ] && . "$HOME/.config/shell/init.sh"'
@@ -154,6 +218,7 @@ case "$(basename "${SHELL:-bash}")" in
   *) link_rc "$HOME/.bashrc" ;;
 esac
 
+progress_bar "$TOTAL_STEPS" "$TOTAL_STEPS"
 echo ""
 echo "Done. Restart Claude Code (exit, then run 'claude' again) to load the new plugins."
 echo "Then, once per project repo: run /setup-matt-pocock-skills to pick its issue tracker."

@@ -26,16 +26,70 @@ $DotfilesSource = "github.com/basvdkruijssen/claude-config"
 # https://github.com/ryanoasis/nerd-fonts/releases first to confirm it's in there.
 $NerdFontVersion = "v3.5.1"
 
-Write-Host "== 1/7: Checking for the claude CLI =="
-if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
-    Write-Error "claude not found on PATH. Install Claude Code first: https://code.claude.com"
+$TotalSteps = 8
+$script:CurrentStep = 0
+
+# Drives both the native Write-Progress bar (rendered by the console host)
+# and a plain-text banner, so output stays readable when redirected to a
+# file or a non-interactive host that ignores Write-Progress.
+function Step {
+    param([string]$Title)
+    $script:CurrentStep++
+    $percent = [int](($script:CurrentStep / $TotalSteps) * 100)
+    Write-Progress -Activity "claude-config setup" -Status "$Title ($script:CurrentStep/$TotalSteps)" -PercentComplete $percent
+    Write-Host ""
+    Write-Host "== ${script:CurrentStep}/${TotalSteps}: ${Title} =="
+}
+
+Step "Checking dependencies"
+$missingDeps = @()
+foreach ($dep in @("winget", "git")) {
+    Write-Host "  checking for $dep..."
+    $cmd = Get-Command $dep -ErrorAction SilentlyContinue
+    if ($cmd) {
+        Write-Host "    found: $($cmd.Source)"
+    }
+    else {
+        Write-Host "    not found"
+        $missingDeps += $dep
+    }
+}
+if ($missingDeps.Count -gt 0) {
+    Write-Error "Missing required tool(s): $($missingDeps -join ', '). Install 'App Installer' from the Microsoft Store for winget, and Git for Windows (https://git-scm.com/downloads/win) for git, then re-run this script."
     exit 1
 }
 
-Write-Host "== 2/7: Installing Claude Code plugins =="
+Step "Checking for the claude CLI"
+$claudeCmd = Get-Command claude -ErrorAction SilentlyContinue
+if ($claudeCmd) {
+    Write-Host "  found: $($claudeCmd.Source)"
+}
+else {
+    Write-Host "  claude not found on PATH. Installing via the native installer (irm https://claude.ai/install.ps1 | iex)..."
+    Invoke-Expression (Invoke-RestMethod https://claude.ai/install.ps1)
+    # The native installer updates PATH via the registry, which this already-
+    # running process doesn't pick up on its own.
+    $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    $env:Path = "$machinePath;$userPath"
+    $claudeCmd = Get-Command claude -ErrorAction SilentlyContinue
+    if ($claudeCmd) {
+        Write-Host "  installed: $($claudeCmd.Source)"
+    }
+    else {
+        Write-Error "claude still not found on PATH after install. Open a new shell and re-run this script, or see https://code.claude.com/docs/en/troubleshoot-install"
+        exit 1
+    }
+}
+
+Step "Installing Claude Code plugins"
+Write-Host "  adding marketplace $MarketplaceSource..."
 claude plugin marketplace add $MarketplaceSource
+Write-Host "  installing bvdk-pstack-discipline@$MarketplaceName..."
 claude plugin install "bvdk-pstack-discipline@$MarketplaceName"
+Write-Host "  installing mattpocock-skills..."
 claude plugin install mattpocock-skills
+Write-Host "  plugins installed."
 
 # New-Item -ItemType SymbolicLink throws when the shell lacks Developer Mode
 # or elevation, unlike bash's `ln -s` on the same machine, which silently
@@ -63,12 +117,12 @@ function Link-OrCopy {
     }
 }
 
-Write-Host "== 3/7: Linking global CLAUDE.md =="
+Step "Linking global CLAUDE.md"
 $ClaudeDir = Join-Path $HOME ".claude"
 New-Item -ItemType Directory -Force -Path $ClaudeDir | Out-Null
 Link-OrCopy -Src (Join-Path $RepoRoot "claude-code\CLAUDE.md") -Dest (Join-Path $ClaudeDir "CLAUDE.md")
 
-Write-Host "== 4/7: Wiring up the status line =="
+Step "Wiring up the status line"
 Link-OrCopy -Src (Join-Path $RepoRoot "claude-code\statusline-context.sh") -Dest (Join-Path $ClaudeDir "statusline-context.sh")
 
 $SettingsPath = Join-Path $ClaudeDir "settings.json"
@@ -86,7 +140,7 @@ $settings["statusLine"] = @{
 $settings | ConvertTo-Json -Depth 20 | Set-Content -Path $SettingsPath -Encoding utf8
 Write-Host "  merged statusLine into $SettingsPath"
 
-Write-Host "== 5/7: Installing the Nerd Font (JetBrainsMono, $NerdFontVersion) =="
+Step "Installing the Nerd Font (JetBrainsMono, $NerdFontVersion)"
 # Tracks which version this script last installed, since Windows has no
 # reliable "is font version X installed" query of its own (InstalledFontCollection
 # only gives family names, not versions) — without this, a re-run reinstalls
@@ -105,8 +159,10 @@ else {
     $extractPath = Join-Path $env:TEMP "JetBrainsMono-NerdFont-$NerdFontVersion"
     $url = "https://github.com/ryanoasis/nerd-fonts/releases/download/$NerdFontVersion/JetBrainsMono.zip"
 
+    Write-Host "  downloading $url..."
     Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing
     if (Test-Path $extractPath) { Remove-Item $extractPath -Recurse -Force }
+    Write-Host "  extracting to $extractPath..."
     Expand-Archive -Path $zipPath -DestinationPath $extractPath
 
     # Files extracted from a downloaded zip carry the Mark-of-the-Web (Internet
@@ -118,6 +174,7 @@ else {
     # Only the base family "JetBrainsMono Nerd Font" (not the Mono/Propo/NL
     # variants, which aren't used here).
     $fontFiles = Get-ChildItem -Path $extractPath -Filter "JetBrainsMonoNerdFont-*.ttf"
+    Write-Host "  installing $($fontFiles.Count) font file(s)..."
 
     # Install through the Fonts shell folder: the same path as right-click >
     # Install in Explorer. Deliberately NOT raw AddFontResource/RemoveFontResource
@@ -138,8 +195,10 @@ else {
     Write-Host "  Set 'JetBrainsMono Nerd Font' as the font in Windows Terminal / VS Code."
 }
 
-Write-Host "== 6/7: Installing Starship + chezmoi =="
+Step "Installing Starship + chezmoi"
+Write-Host "  installing Starship.Starship via winget..."
 winget install --id Starship.Starship --accept-package-agreements --accept-source-agreements
+Write-Host "  installing twpayne.chezmoi via winget..."
 winget install --id twpayne.chezmoi --accept-package-agreements --accept-source-agreements
 
 # winget's PATH update is only visible in a new shell; reload it for the rest
@@ -148,7 +207,7 @@ $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
 $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
 $env:Path = "$machinePath;$userPath"
 
-Write-Host "== 7/7: Deploying the Starship prompt and shell dotfiles =="
+Step "Deploying the Starship prompt and shell dotfiles"
 # `chezmoi init <repo>` only clones into the source dir if no git repo is
 # there yet; on a machine already set up from the old standalone `starship`
 # repo, it silently keeps using that old remote instead of switching to this
@@ -167,7 +226,9 @@ if (Test-Path (Join-Path $ChezmoiSrc ".git")) {
     }
 }
 if (-not $skipChezmoiApply) {
+    Write-Host "  running: chezmoi init --apply $DotfilesSource"
     chezmoi init --apply $DotfilesSource
+    Write-Host "  dotfiles applied."
 }
 
 if (-not (Test-Path $PROFILE)) {
@@ -183,6 +244,7 @@ else {
     Write-Host "  `$PROFILE already has the dotfiles hook, skipping."
 }
 
+Write-Progress -Activity "claude-config setup" -Completed
 Write-Host ""
 Write-Host "Done. Restart Claude Code (exit, then run 'claude' again) to load the new plugins."
 Write-Host "Then, once per project repo: run /setup-matt-pocock-skills to pick its issue tracker."

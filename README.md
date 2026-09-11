@@ -90,22 +90,25 @@ cd claude-config
 
 **3. Done.** The script, in order:
 
-1. Adds this repo as a Claude Code plugin marketplace, installs
-   `bvdk-pstack-discipline` from it, and installs `mattpocock-skills` from
-   Claude Code's official marketplace.
-2. Symlinks `claude-code/CLAUDE.md` to `~/.claude/CLAUDE.md` and
+1. Checks for required tools (`curl`/`git` on macOS/Linux; `winget`/`git` on
+   Windows) and stops with an install hint if any are missing.
+2. Installs the Claude Code CLI itself via the native installer if it isn't
+   already on `PATH`, then adds this repo as a Claude Code plugin
+   marketplace, installs `bvdk-pstack-discipline` from it, and installs
+   `mattpocock-skills` from Claude Code's official marketplace.
+3. Symlinks `claude-code/CLAUDE.md` to `~/.claude/CLAUDE.md` and
    `claude-code/statusline-context.sh` to `~/.claude/statusline-context.sh`,
    and wires the status line into `~/.claude/settings.json`.
-3. Installs a Nerd Font (Windows: automatically, pinned to a recent Nerd
+4. Installs a Nerd Font (Windows: automatically, pinned to a recent Nerd
    Fonts release; macOS/Linux: prints the one command to run yourself, since
    that can't be automated the same way).
-4. Installs Starship and chezmoi.
-5. Runs `chezmoi init --apply` against this repo to deploy the prompt config,
+5. Installs Starship and chezmoi.
+6. Runs `chezmoi init --apply` against this repo to deploy the prompt config,
    PowerShell profile, and shell init script to `~`, and — Windows only —
    installs the `Terminal-Icons`/`Az`/`Az.Tools.Predictor` PowerShell modules.
    You'll be prompted once for machine type (`work`/`personal`); the answer
    is stored locally, not in the repo.
-6. Hooks the deployed dotfiles into `$PROFILE` (Windows) or
+7. Hooks the deployed dotfiles into `$PROFILE` (Windows) or
    `.bashrc`/`.zshrc` (macOS/Linux/WSL), if not already hooked.
 
 It's safe to re-run. Restart Claude Code to load the new plugins, and open a
