@@ -1,0 +1,13 @@
+{
+  "name": "bvdk-pstack-discipline",
+  "displayName": "pstack discipline (ported)",
+  "version": "1.0.0",
+  "description": "27 writing-discipline and engineering-principle skills ported from cursor/plugins' pstack, adapted for Claude Code. Every skill sets disable-model-invocation: true, so none of them auto-trigger — they only run when you explicitly invoke them, which keeps them from competing with auto-invoked skills in other installed plugins (e.g. mattpocock-skills).",
+  "author": {
+    "name": "Bas van der Kruijssen",
+    "url": "https://github.com/basvdkruijssen"
+  },
+  "homepage": "https://github.com/basvdkruijssen/claude-config",
+  "license": "MIT",
+  "keywords": ["writing", "engineering-principles", "code-quality", "ported-from-pstack"]
+}

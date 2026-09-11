@@ -1,0 +1,20 @@
+{
+  "name": "bvdk-claude-config",
+  "owner": {
+    "name": "Bas van der Kruijssen",
+    "url": "https://github.com/basvdkruijssen"
+  },
+  "description": "Personal durable Claude Code configuration: a curated, version-controlled plugin of writing-discipline and engineering-principle skills, kept in sync across machines via git instead of local memory files.",
+  "plugins": [
+    {
+      "name": "bvdk-pstack-discipline",
+      "source": "./plugins/bvdk-pstack-discipline",
+      "description": "Writing-discipline and engineering-principle skills ported from pstack (cursor/plugins), adapted for Claude Code. All skills are user-invoked only.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Bas van der Kruijssen"
+      },
+      "category": "writing,engineering-discipline"
+    }
+  ]
+}
