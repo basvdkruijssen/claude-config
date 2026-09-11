@@ -73,6 +73,23 @@ else {
     $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
     $env:Path = "$machinePath;$userPath"
     $claudeCmd = Get-Command claude -ErrorAction SilentlyContinue
+
+    # Observed on a clean Windows machine: the installer places the binary at
+    # ~/.local/bin/claude.exe but doesn't always add that directory to the
+    # user PATH registry value, so the refresh above has nothing new to pick
+    # up. Add it ourselves rather than fail outright.
+    $installedClaude = Join-Path $HOME ".local\bin\claude.exe"
+    if (-not $claudeCmd -and (Test-Path $installedClaude)) {
+        Write-Host "  claude installed at $installedClaude but its directory isn't on PATH; adding it."
+        $claudeBinDir = Split-Path $installedClaude -Parent
+        $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+        if (($userPath -split ";") -notcontains $claudeBinDir) {
+            [Environment]::SetEnvironmentVariable("Path", "$userPath;$claudeBinDir", "User")
+        }
+        $env:Path = "$env:Path;$claudeBinDir"
+        $claudeCmd = Get-Command claude -ErrorAction SilentlyContinue
+    }
+
     if ($claudeCmd) {
         Write-Host "  installed: $($claudeCmd.Source)"
     }

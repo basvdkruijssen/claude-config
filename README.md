@@ -127,6 +127,46 @@ For the prompt's design, day-to-day chezmoi commands (`chezmoi edit`,
 `chezmoi diff`, `chezmoi update`), and troubleshooting, see
 [`docs/starship-prompt.md`](./docs/starship-prompt.md).
 
+### Testing `setup.ps1` on a fresh Windows VM
+
+`setup.ps1` requires an actual interactive logon session (RDP or console) —
+it cannot be validated headlessly, e.g. via Azure VM Run Command or a
+non-interactive scheduled task. This was confirmed on both Windows Server
+2022 and a Windows 11 client image:
+
+- **Windows Server images ship without winget/App Installer at all.**
+  Bootstrapping it manually (sideloading the `Microsoft.DesktopAppInstaller`
+  msixbundle plus its dependencies — VCLibs, the Windows App Runtime; the
+  `DesktopAppInstaller_Dependencies.zip` asset on each
+  [winget-cli release](https://github.com/microsoft/winget-cli/releases)
+  bundles the right versions) is possible, but `Add-AppxPackage` outright
+  refuses to run under `NT AUTHORITY\SYSTEM` (`HRESULT 0x80073CF9`, "the
+  Local System account is not allowed to perform this operation") — it has
+  to run as a real user, e.g. via a scheduled task created with
+  `schtasks /RU <user> /RP <password>`.
+- **Windows 11 client images ship winget pre-provisioned**, but that doesn't
+  help outside an interactive session either: `winget.exe` exists and is on
+  `PATH`, but invoking it from a non-interactive context (SYSTEM, or a
+  scheduled task running as a real user without an active interactive
+  desktop) fails immediately with `STATUS_DLL_NOT_FOUND`
+  (`0xC0000135`)/"the system cannot execute the specified program" — packaged
+  (MSIX) apps need the AppModel activation infrastructure that only exists
+  in a real logged-on desktop session.
+- Because of the above, `setup.ps1`'s first step (`Checking dependencies`)
+  reports `winget: not found` and hard-exits in both headless scenarios,
+  even after winget is technically installed. Git and PowerShell 7 install
+  and run fine non-interactively (they're plain downloaded installers, not
+  packaged apps), so those two aren't blockers.
+- The Nerd Font install step is very likely to hit the same wall for a
+  different reason: it drives a `Shell.Application` COM object against the
+  Explorer shell namespace, which also needs a real desktop session.
+
+**Bottom line:** to actually test this script end-to-end on a clean VM, RDP
+in and run it from an interactive PowerShell 7 session — matching what the
+script's own header comment already says. Headless automation is fine for
+provisioning the VM and installing baseline tooling (git, pwsh) beforehand,
+but can't get past the winget check on its own.
+
 **Migrating a machine that already ran the old standalone `starship` repo's
 setup.** `chezmoi init <repo>` only clones into chezmoi's source directory
 (`~/.local/share/chezmoi`) if no git repo is there yet — on such a machine
