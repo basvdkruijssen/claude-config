@@ -172,4 +172,4 @@ fi
 line2=$(printf "${BOLD}\xf0\x9f\x93\x8a${RESET} %s${GRAY} │ ${RESET}${BOLD}\xe2\x8f\xb1\xef\xb8\x8f 5h${RESET} %s${GRAY} │ ${RESET}${BOLD}\xf0\x9f\x93\x85 7d${RESET} %s" \
   "$ctx_str" "$five_str" "$seven_str")
 
-printf "%b\n%b" "$line1" "$line2"
+printf '%s\n%s\n' "$line1" "$line2"
