@@ -85,6 +85,8 @@ else {
 Step "Installing Claude Code plugins"
 Write-Host "  adding marketplace $MarketplaceSource..."
 claude plugin marketplace add $MarketplaceSource
+Write-Host "  adding marketplace anthropics/claude-plugins-official (hosts mattpocock-skills)..."
+claude plugin marketplace add anthropics/claude-plugins-official
 Write-Host "  installing bvdk-pstack-discipline@$MarketplaceName..."
 claude plugin install "bvdk-pstack-discipline@$MarketplaceName"
 Write-Host "  installing mattpocock-skills..."

@@ -76,6 +76,8 @@ fi
 step "Installing Claude Code plugins"
 echo "  adding marketplace $MARKETPLACE_SOURCE..."
 claude plugin marketplace add "$MARKETPLACE_SOURCE"
+echo "  adding marketplace anthropics/claude-plugins-official (hosts mattpocock-skills)..."
+claude plugin marketplace add anthropics/claude-plugins-official
 echo "  installing bvdk-pstack-discipline@${MARKETPLACE_NAME}..."
 claude plugin install "bvdk-pstack-discipline@${MARKETPLACE_NAME}"
 echo "  installing mattpocock-skills..."
