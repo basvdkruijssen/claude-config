@@ -1,0 +1,8 @@
+{{ if ne .chezmoi.os "windows" }}
+.config/powershell
+AppData
+{{ end }}
+
+{{ if eq .chezmoi.os "windows" }}
+.config/shell
+{{ end }}

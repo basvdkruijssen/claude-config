@@ -1,0 +1,38 @@
+# chezmoi lokale state (hoort nooit in de repo)
+chezmoistate.boltdb
+.chezmoi.toml
+.chezmoi.yaml
+.chezmoi.json
+
+# Secrets en machine-lokale overrides
+*.local
+*.local.*
+.env
+.env.*
+*.key
+*.pem
+*.pfx
+secrets.toml
+
+# Terraform (voor het geval er ooit voorbeeldcode bij komt)
+.terraform/
+*.tfstate
+*.tfstate.*
+tfplan
+
+# Besturingssysteem
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.idea/
+*.swp
+*~
+
+# Machine-specifieke profielaanvullingen (nooit committen)
+profile.local.ps1
+init.local.sh
+
+# Build output from scripts/package-desktop-skills.(sh|ps1)
+dist/
