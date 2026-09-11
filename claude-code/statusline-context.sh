@@ -141,7 +141,7 @@ if [ -z "$JQ" ] && [ -z "$PY" ]; then
     echo "context: n/a (install jq or python for full statusline)"
   else
     formatted_tokens=$(awk -v n="$used_tokens" 'BEGIN { if (n >= 1000) printf "%.1fk", n/1000; else printf "%d", n }')
-    printf "context: %s (%s%%) [install jq or python for full statusline]" "$formatted_tokens" "$used_pct"
+    printf "context: %s [%s%%] [install jq or python for full statusline]" "$formatted_tokens" "$used_pct"
   fi
   exit 0
 fi
@@ -156,7 +156,7 @@ cwd_display="${cwd_path/#$HOME/\~}"
 
 model_str=$(printf "${CYAN}%s${RESET}" "$model_name")
 if [[ "$model_name" =~ ^(.*[^[:space:]])[[:space:]]+\((.*)\)$ ]]; then
-  model_str=$(printf "${CYAN}%s ${CYAN_PALE}(%s)${RESET}" \
+  model_str=$(printf "${CYAN}%s ${CYAN_PALE}[%s]${RESET}" \
     "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}")
 fi
 if [ -n "$effort_level" ] && [ "$effort_level" != "null" ]; then
@@ -169,7 +169,7 @@ if [ -n "$cwd_path" ] && git -C "$cwd_path" rev-parse --is-inside-work-tree >/de
   branch=$(git -C "$cwd_path" branch --show-current 2>/dev/null)
   [ -z "$branch" ] && branch=$(git -C "$cwd_path" rev-parse --short HEAD 2>/dev/null)
   if [ -n "$repo_name" ]; then
-    git_segment=$(printf "${MUTED} │ ${RESET}${LEAF}\xf0\x9f\x8c\xbf %s ${LEAF_PALE}(%s)${RESET}" "$branch" "$repo_name")
+    git_segment=$(printf "${MUTED} │ ${RESET}${LEAF}\xf0\x9f\x8c\xbf %s ${LEAF_PALE}[%s]${RESET}" "$branch" "$repo_name")
   fi
 fi
 
@@ -184,7 +184,7 @@ else
   formatted_tokens=$(awk -v n="$used_tokens" 'BEGIN { if (n >= 1000) printf "%.1fk", n/1000; else printf "%d", n }')
   ctx_color=$(pct_color "$used_pct")
   ctx_pale=$(pct_pale "$used_pct")
-  ctx_str=$(printf "${ctx_color}%s%% ${ctx_pale}(%s)${RESET}" "$used_pct" "$formatted_tokens")
+  ctx_str=$(printf "${ctx_color}%s%% ${ctx_pale}[%s]${RESET}" "$used_pct" "$formatted_tokens")
 fi
 
 five_str="n/a"
@@ -193,7 +193,7 @@ if [ -n "$five_pct" ] && [ "$five_pct" != "null" ]; then
   five_pale=$(pct_pale "$five_pct")
   five_when=$(until_str "$five_reset")
   if [ -n "$five_when" ]; then
-    five_str=$(printf "${five_color}%s%% ${five_pale}(resets %s)${RESET}" "$five_pct" "$five_when")
+    five_str=$(printf "${five_color}%s%% ${five_pale}[resets %s]${RESET}" "$five_pct" "$five_when")
   else
     five_str=$(printf "${five_color}%s%%${RESET}" "$five_pct")
   fi
@@ -205,7 +205,7 @@ if [ -n "$seven_pct" ] && [ "$seven_pct" != "null" ]; then
   seven_pale=$(pct_pale "$seven_pct")
   seven_when=$(until_str "$seven_reset")
   if [ -n "$seven_when" ]; then
-    seven_str=$(printf "${seven_color}%s%% ${seven_pale}(resets %s)${RESET}" "$seven_pct" "$seven_when")
+    seven_str=$(printf "${seven_color}%s%% ${seven_pale}[resets %s]${RESET}" "$seven_pct" "$seven_when")
   else
     seven_str=$(printf "${seven_color}%s%%${RESET}" "$seven_pct")
   fi
