@@ -151,7 +151,12 @@ if (-not (Test-Path $SettingsPath)) {
 
 # The status line always runs through a bash-compatible shell (Git Bash),
 # regardless of Claude Code's configured defaultShell.
-$settings = Get-Content -Path $SettingsPath -Raw | ConvertFrom-Json -AsHashtable
+# The ?? guard covers the same AutomationNull trap as the $PROFILE hook further
+# down: an existing but empty settings.json pipes nothing into ConvertFrom-Json,
+# leaving $settings null and failing the index assignment on the next line.
+$settingsRaw = ((Get-Content -Path $SettingsPath -Raw -ErrorAction SilentlyContinue) ?? '').Trim()
+if ($settingsRaw -eq '') { $settingsRaw = '{}' }
+$settings = $settingsRaw | ConvertFrom-Json -AsHashtable
 $settings["statusLine"] = @{
     type    = "command"
     command = "bash ~/.claude/statusline-context.sh"
@@ -167,7 +172,11 @@ Step "Installing the Nerd Font (JetBrainsMono, $NerdFontVersion)"
 # prompt (16 of them for this family). Bump $NerdFontVersion above to force a
 # reinstall; delete this marker file to force one without bumping the version.
 $FontMarker = Join-Path $env:LOCALAPPDATA "claude-config\nerdfont-version.txt"
-if ((Test-Path $FontMarker) -and ((Get-Content $FontMarker -Raw).Trim() -eq $NerdFontVersion)) {
+# ?? guards the AutomationNull trap again (see the $PROFILE hook below): a
+# truncated, empty marker file would otherwise throw on .Trim() and, with
+# $ErrorActionPreference = "Stop", abort the whole setup run.
+$installedFontVersion = ((Get-Content $FontMarker -Raw -ErrorAction SilentlyContinue) ?? '').Trim()
+if ($installedFontVersion -eq $NerdFontVersion) {
     Write-Host "  JetBrainsMono Nerd Font $NerdFontVersion already installed, skipping."
 }
 elseif (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
@@ -254,8 +263,17 @@ if (-not (Test-Path $PROFILE)) {
     New-Item -ItemType File -Path $PROFILE -Force | Out-Null
 }
 $profileLine = '. "$HOME\.config\powershell\profile.ps1"'
-$existingProfile = Get-Content $PROFILE -Raw -ErrorAction SilentlyContinue
-if ($existingProfile -notmatch [regex]::Escape($profileLine)) {
+# Read the hook back with Select-String, not `Get-Content -Raw` + `-match`:
+# Get-Content -Raw on an empty file — exactly what New-Item just created on a
+# fresh machine — returns AutomationNull, not $null, and
+# `AutomationNull -notmatch <pattern>` is an empty collection (falsy) rather than
+# $true. That silently skipped the Add-Content on every fresh machine, reported
+# "already has the dotfiles hook", and left PowerShell on its default prompt with
+# no Starship. Casting with [string] does NOT fix it either — [string] over
+# AutomationNull is $null, so .Contains() then throws. Select-String -SimpleMatch
+# -Quiet returns a real Boolean for empty, missing, and populated files alike,
+# and is the direct analogue of setup.sh's `grep -Fq`.
+if (-not (Select-String -Path $PROFILE -SimpleMatch -Pattern $profileLine -Quiet)) {
     Add-Content $PROFILE $profileLine
     Write-Host "  added the dotfiles hook to `$PROFILE"
 }

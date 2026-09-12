@@ -91,6 +91,52 @@ source-dir remote that doesn't match `claude-config` and skip the `chezmoi
 apply` step with a warning instead of silently deploying stale dotfiles; see
 the "Migrating" note in `README.md` for the fix.
 
+## Gotcha: `Get-Content -Raw` on an empty file returns AutomationNull, not `$null`
+
+This silently broke the PowerShell prompt on every fresh machine. `setup.ps1`
+creates `$PROFILE` if it's missing, then appends the dotfiles hook only if it
+isn't already there. The check was `Get-Content $PROFILE -Raw` piped into
+`-notmatch`, and on the empty file `New-Item` had just created:
+
+- `Get-Content -Raw` returns `[AutomationNull]::Value` ("no output"), **not**
+  `$null` — though `$null -eq $x` on it is still `$true`, which makes it look
+  like `$null` when you probe it.
+- `AutomationNull -notmatch <pattern>` takes the *collection filter* path and
+  returns an **empty collection** — falsy — where a literal `$null` LHS would
+  have returned `$true`.
+
+So the `if` never fired, the script printed `$PROFILE already has the dotfiles
+hook, skipping.`, no hook was ever written, and PowerShell kept its default
+prompt with no Starship — while `chezmoi apply`, `starship.toml` and the
+Starship install were all perfectly fine, which is where the debugging time
+goes.
+
+**`[string]` does not fix it**: `[string](Get-Content emptyfile -Raw)` is
+`$null`, not `""`, so a following `.Contains()` throws instead. Use one of:
+
+```powershell
+# Testing for a line in a file — the direct analogue of `grep -Fq`:
+if (-not (Select-String -Path $f -SimpleMatch -Pattern $line -Quiet)) { ... }
+
+# Needing the text itself — ?? gives a real empty string (PS7, and this repo
+# already #Requires -Version 7):
+$text = ((Get-Content $f -Raw -ErrorAction SilentlyContinue) ?? '').Trim()
+```
+
+All three `Get-Content -Raw` reads in `setup.ps1` (`$PROFILE`, `settings.json`,
+the Nerd Font version marker) hit this; the latter two would throw under the
+script's `$ErrorActionPreference = "Stop"` and abort the whole run. When adding
+a new one, verify against a genuinely 0-byte file (`New-Item -ItemType File`) —
+`Set-Content -Value ""` writes a newline, so the file is 2 bytes and the bug
+does not reproduce:
+
+```powershell
+$f = New-Item -ItemType File "$env:TEMP\zero.txt" -Force
+(Get-Content $f -Raw) -eq $null            # True — looks like $null
+($null -notmatch "x")                      # True   <- what you expect
+((Get-Content $f -Raw) -notmatch "x")      # empty  <- what you get
+```
+
 ## Architecture
 
 - **`.chezmoiroot`** points chezmoi's source root at `home/`, so everything
