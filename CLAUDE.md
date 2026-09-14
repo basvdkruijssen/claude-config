@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 Guidance for working on this repo (`basvdkruijssen/claude-config`), not the
-global instructions it distributes (those live in `claude-code/CLAUDE.md`).
+global instructions it distributes (those live in `home/dot_claude/CLAUDE.md`).
 
 ## What this repo is
 
@@ -9,18 +9,22 @@ Two independent halves, deployed by the same `scripts/setup.sh`/`setup.ps1`,
 that happen to share one machine-setup script for convenience:
 
 - **Claude Code/Desktop config**: `.claude-plugin/`, `plugins/`,
-  `desktop-skills/`, `claude-code/` — a plugin marketplace and skill/config
-  distribution mechanism. See the root `README.md` for what's in each.
-- **Shell/prompt dotfiles**: `home/` plus `.chezmoiroot` at the repo root —
-  a [chezmoi](https://www.chezmoi.io) source tree deploying a cross-shell
-  [Starship](https://starship.rs) prompt (PowerShell 7, bash, zsh), synced to
-  `~` on every machine. This half was merged in from a formerly separate,
-  formerly-private `starship` repo. `.chezmoiroot` (content: `home`) tells
-  chezmoi to treat `home/` as its source root, so everything else in this
-  repo (`README.md`, `scripts/`, `plugins/`, ...) is invisible to it and never
-  gets deployed to `~`. Full design rationale and day-to-day chezmoi usage:
-  [`docs/starship-prompt.md`](./docs/starship-prompt.md) (kept in the
-  original repo's language).
+  `scripts/package-desktop-skills.*` — a plugin marketplace and skill
+  distribution mechanism. The Claude Desktop zips are built from the plugin's
+  skills by that script, never maintained as copies. See the root `README.md`
+  for what's in each.
+- **Dotfiles**: `home/` plus `.chezmoiroot` at the repo root — a
+  [chezmoi](https://www.chezmoi.io) source tree deploying a cross-shell
+  [Starship](https://starship.rs) prompt (PowerShell 7, bash, zsh) *and* the
+  global Claude Code files (`~/.claude/CLAUDE.md`, the status-line script,
+  under `home/dot_claude/`), synced to `~` on every machine. One deployment
+  mechanism for everything in `~`, and no symlinks anywhere, so the setup
+  needs neither elevation nor Windows Developer Mode. The prompt half was
+  merged in from a formerly separate, formerly-private `starship` repo.
+  `.chezmoiroot` (content: `home`) tells chezmoi to treat `home/` as its
+  source root, so everything else in this repo (`README.md`, `scripts/`,
+  `plugins/`, ...) is invisible to it and never gets deployed to `~`. Full design rationale and day-to-day chezmoi usage:
+  [`docs/starship-prompt.md`](./docs/starship-prompt.md).
 - There is no build step or test suite for either half — "correctness" means
   the plugin/marketplace JSON is valid, and for the dotfiles half, that the
   TOML/template files are valid and `chezmoi apply` produces the right output
@@ -141,8 +145,18 @@ $f = New-Item -ItemType File "$env:TEMP\zero.txt" -Force
 
 - **`.chezmoiroot`** points chezmoi's source root at `home/`, so everything
   else in this repo (`README.md`, `.gitignore`, `scripts/`, `plugins/`,
-  `desktop-skills/`, `claude-code/`, `docs/`) is repo-only and never deployed
-  to `~`.
+  `docs/`) is repo-only and never deployed to `~`.
+- **`home/dot_claude/`** deploys exactly two entries into `~/.claude`:
+  `CLAUDE.md` and `statusline-context.sh`. chezmoi leaves everything else in
+  that directory alone (`settings.json`, `plugins/`, `projects/`, ...) because
+  it never removes unmanaged files unless a directory is prefixed `exact_` —
+  so never rename it to `exact_dot_claude`. `settings.json` is deliberately
+  not managed: Claude Code rewrites it at runtime, so `scripts/setup.*` merge
+  the `statusLine` key into it instead of replacing the file.
+- **`.gitattributes`** pins `*.sh` to LF. chezmoi deploys files verbatim from
+  its own clone of this repo, and Windows clones default to
+  `core.autocrlf=true`; without the pin, a shell script checked out with CRLF
+  would be deployed with CRLF and fail under bash on Linux/macOS/WSL.
 - **`home/.chezmoi.toml.tmpl`** runs once at `chezmoi init`, prompting for
   `machineType` (work/personal, stored locally, not in the repo) and — on
   Windows only — configuring chezmoi to run `.ps1` scripts via `pwsh` (PS7)
@@ -178,9 +192,10 @@ $f = New-Item -ItemType File "$env:TEMP\zero.txt" -Force
   `CLAUDE.md`, checked non-recursively — deliberately not `.claude/`, since
   that would also match `~` itself via the global `~/.claude` config dir).
 - **`scripts/setup.ps1`/`scripts/setup.sh`** are one-time bootstrap scripts
-  covering both halves of this repo: Claude Code plugin install plus
-  CLAUDE.md/status-line symlinking, and (merged in from the former
-  `starship` repo) Nerd Font, Starship/chezmoi install, `chezmoi init
-  --apply`, and shell-profile hookup — idempotent, safe to re-run, and
+  covering both halves of this repo: Claude Code plugin install, and (merged
+  in from the former `starship` repo) Nerd Font, Starship/chezmoi install,
+  `chezmoi init --apply`, shell-profile hookup, and finally the `statusLine`
+  merge into `~/.claude/settings.json` — idempotent, safe to re-run, and
   deliberately kept outside `home/` since they're not part of the deployed
-  dotfiles.
+  dotfiles. Day-to-day updates don't need them: `chezmoi update` for
+  everything in `~`, `claude plugin update` for the plugins.

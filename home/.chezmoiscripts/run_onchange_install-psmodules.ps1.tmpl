@@ -1,16 +1,16 @@
 {{- if eq .chezmoi.os "windows" -}}
-# Wordt door chezmoi uitgevoerd zodra de inhoud van dit script wijzigt
-# (run_onchange_), niet bij elke apply. Installeert alleen wat ontbreekt.
+# Run by chezmoi whenever the content of this script changes (run_onchange_),
+# not on every apply. Installs only what is missing.
 #
-# Alleen voor Windows: .chezmoiignore geldt niet voor scripts, dus dit bestand
-# is een .tmpl dat op andere OS'en naar een lege string rendert. Chezmoi voert
-# een script niet uit als de gerenderde inhoud leeg is (anders: fork/exec ...
-# exec format error, want er is geen PowerShell-interpreter geconfigureerd).
+# Windows only: .chezmoiignore does not apply to scripts, so this file is a
+# .tmpl that renders to an empty string on other OSes. chezmoi skips a script
+# whose rendered content is empty (otherwise: fork/exec ... exec format error,
+# because no PowerShell interpreter is configured there).
 
 $ErrorActionPreference = 'Stop'
 
-# Az is groot (~1 GB) en duurt lang. Wil je het lichter houden, vervang 'Az' door
-# alleen de modules die je gebruikt, bijvoorbeeld Az.Accounts en Az.Resources.
+# Az is large (~1 GB) and slow to install. To keep it lighter, replace 'Az' with
+# only the modules you use, for example Az.Accounts and Az.Resources.
 $modules = @(
     'Terminal-Icons'
     'Az'
@@ -19,11 +19,11 @@ $modules = @(
 
 foreach ($module in $modules) {
     if (Get-Module -ListAvailable -Name $module) {
-        Write-Host "$module is al aanwezig." -ForegroundColor DarkGray
+        Write-Host "$module is already installed." -ForegroundColor DarkGray
         continue
     }
 
-    Write-Host "Installeren: $module" -ForegroundColor Cyan
+    Write-Host "Installing: $module" -ForegroundColor Cyan
     Install-Module -Name $module -Repository PSGallery -Scope CurrentUser -Force -AllowClobber
 }
 {{- end }}

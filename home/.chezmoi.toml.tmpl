@@ -1,12 +1,12 @@
-{{- /* Wordt eenmalig gevraagd bij `chezmoi init`. Antwoorden komen in
-       ~/.config/chezmoi/chezmoi.toml en blijven lokaal (niet in de repo). */ -}}
-{{- $machineType := promptStringOnce . "machineType" "Machinetype (work/personal)" "work" -}}
+{{- /* Asked once at `chezmoi init`. Answers land in
+       ~/.config/chezmoi/chezmoi.toml and stay local (not in the repo). */ -}}
+{{- $machineType := promptStringOnce . "machineType" "Machine type (work/personal)" "work" -}}
 
 [data]
     machineType = {{ $machineType | quote }}
 
 {{ if eq .chezmoi.os "windows" -}}
-# Zorgt dat chezmoi .ps1-scripts met PowerShell 7 uitvoert in plaats van
+# Makes chezmoi run .ps1 scripts with PowerShell 7 instead of
 # Windows PowerShell 5.1.
 [interpreters.ps1]
     command = "pwsh"

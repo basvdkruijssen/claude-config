@@ -1,10 +1,10 @@
-# chezmoi lokale state (hoort nooit in de repo)
+# chezmoi local state (never belongs in the repo)
 chezmoistate.boltdb
 .chezmoi.toml
 .chezmoi.yaml
 .chezmoi.json
 
-# Secrets en machine-lokale overrides
+# Secrets and machine-local overrides
 *.local
 *.local.*
 .env
@@ -14,13 +14,13 @@ chezmoistate.boltdb
 *.pfx
 secrets.toml
 
-# Terraform (voor het geval er ooit voorbeeldcode bij komt)
+# Terraform (in case example code is ever added)
 .terraform/
 *.tfstate
 *.tfstate.*
 tfplan
 
-# Besturingssysteem
+# Operating system
 .DS_Store
 Thumbs.db
 desktop.ini
@@ -30,9 +30,12 @@ desktop.ini
 *.swp
 *~
 
-# Machine-specifieke profielaanvullingen (nooit committen)
+# Machine-specific profile additions (never commit)
 profile.local.ps1
 init.local.sh
 
 # Build output from scripts/package-desktop-skills.(sh|ps1)
 dist/
+
+# Claude Code runtime state left in this checkout by sessions run from it
+.claude/scheduled_tasks.lock

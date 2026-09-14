@@ -1,28 +1,28 @@
 "$schema" = 'https://starship.rs/config-schema.json'
 
-# ── Algemeen ──────────────────────────────────────────────────────────────────
+# ── General ───────────────────────────────────────────────────────────────────
 add_newline = true
-command_timeout = 1000   # ms; az/terraform kunnen traag zijn op koude cache
-scan_timeout = 30        # ms; houdt grote Terraform-repos snel
+command_timeout = 1000   # ms; az/terraform can be slow on a cold cache
+scan_timeout = 30        # ms; keeps large Terraform repos fast
 
-# Basis: Starship's ingebouwde "catppuccin-powerline" preset (`starship preset
-# catppuccin-powerline`), met de eigen segmenten (Claude Code, Azure, Terraform)
-# teruggezet en elk segment voorzien van een eigen icoon.
+# Base: Starship's built-in "catppuccin-powerline" preset (`starship preset
+# catppuccin-powerline`), with the project-specific segments (Claude Code, Azure,
+# Terraform) added back and every segment given its own icon.
 format = """
-[](lavender)\
+[](lavender)\
 $time\
-[ ](fg:lavender)\
+[ ](fg:lavender)\
 ${env_var.CLAUDECODE}\
-[](peach)\
+[](peach)\
 $directory\
-[](bg:yellow fg:peach)\
+[](bg:yellow fg:peach)\
 $git_branch\
 $git_state\
 $git_status\
-[](fg:yellow bg:green)\
+[](fg:yellow bg:green)\
 $dotnet\
 $python\
-[ ](fg:green)\
+[ ](fg:green)\
 ${custom.claude}\
 $azure\
 $terraform\
@@ -30,20 +30,20 @@ $cmd_duration\
 $line_break\
 $character"""
 
-# Flavour wisselen: verander onderstaande regel in bv. 'catppuccin_latte' of
-# 'catppuccin_macchiato'. Alle vier de paletten staan hieronder klaar.
+# To switch flavour, change the line below to e.g. 'catppuccin_latte' or
+# 'catppuccin_macchiato'. All four palettes are defined further down.
 palette = 'catppuccin_mocha'
 
-# ── Tijd ──────────────────────────────────────────────────────────────────────
-# Icoon:  (klok)
+# ── Time ──────────────────────────────────────────────────────────────────────
+# Icon:  (clock)
 [time]
 disabled = false
 time_format = "%R"
 style = "bg:lavender"
 format = '[[  $time ](fg:crust bg:lavender)]($style)'
 
-# ── Locatie ───────────────────────────────────────────────────────────────────
-# Icoon: 󰆋 (map)
+# ── Location ──────────────────────────────────────────────────────────────────
+# Icon: 󰆋 (folder)
 [directory]
 style = "bg:peach fg:crust"
 format = "[ 󰉋 $path ]($style)[$read_only]($read_only_style)"
@@ -61,8 +61,8 @@ read_only_style = "bg:peach fg:red"
 "Developer" = "󰲋 "
 
 # ── Git ───────────────────────────────────────────────────────────────────────
-# Iconen:  (branch),  (merge/rebase bezig), plus de ingebouwde
-# statusglyphs van git_status zelf (⇡ ahead, ⇣ behind, ! modified, + staged, ...)
+# Icons:  (branch),  (merge/rebase in progress), plus git_status's
+# own built-in status glyphs (⇡ ahead, ⇣ behind, ! modified, + staged, ...)
 [git_branch]
 symbol = ""
 style = "bg:yellow"
@@ -76,9 +76,9 @@ format = '[[  $state( $progress_current/$progress_total) ](fg:crust bg:yellow
 style = "bg:yellow"
 format = '[[($all_status$ahead_behind )](fg:crust bg:yellow)]($style)'
 
-# ── Talen ─────────────────────────────────────────────────────────────────────
-# Iconen:  (.NET),  (Python). Overige taalmodules (Node, Rust, Go, ...) staan
-# niet in $format en worden dus nooit getoond — bewuste keuze om ruis te beperken.
+# ── Languages ─────────────────────────────────────────────────────────────────
+# Icons:  (.NET),  (Python). Other language modules (Node, Rust, Go, ...) are
+# not in $format and therefore never shown, a deliberate choice to limit noise.
 [dotnet]
 symbol = " "
 style = "bg:green"
@@ -91,31 +91,33 @@ style = "bg:green"
 format = '[[ $symbol($version )(\(#$virtualenv\) ) ](fg:crust bg:green)]($style)'
 
 # ── Claude ────────────────────────────────────────────────────────────────────
-# 1) Sessie-indicator: deze shell is gestart binnen Claude Code. Claude Code
-# exporteert CLAUDECODE=1 naar subprocessen, dus dit is een betrouwbaar signaal
-# dat je niet in een "gewone" shell zit. Icoon: 
+# 1) Session indicator: this shell was started inside Claude Code. Claude Code
+# exports CLAUDECODE=1 to subprocesses, so this is a reliable signal that you
+# are not in an ordinary shell. Icon: 
 [env_var.CLAUDECODE]
 variable = "CLAUDECODE"
 symbol = ""
 style = "bold #d97757"
 format = "[${symbol} claude-code]($style) "
 
-# 2) Repo-indicator: deze repo heeft een CLAUDE.md. Alleen op dit bestand
-# detecteren (niet op .claude/): anders vuurt dit ook in ~ af, want daar staat
-# de globale Claude Code-config (~/.claude), die geen repo-indicator hoort te zijn.
-# Icoon: 
+# 2) Repo indicator: this repo has a CLAUDE.md. Detect only that file (not
+# .claude/): otherwise this also fires in ~, where the global Claude Code config
+# (~/.claude) lives, which should not count as a repo indicator.
+# Deliberately without `command`: the text is literal in `format`, so Starship
+# never spawns a subprocess per prompt (on Windows, via STARSHIP_SHELL=pwsh,
+# that was a full pwsh start of ~500 ms).
+# Icon: 
 [custom.claude]
-description = "Repo bevat een CLAUDE.md"
+description = "Repo contains a CLAUDE.md"
 detect_files = ["CLAUDE.md"]
-command = "echo claude"
-format = "[$symbol $output]($style) "
+format = "[$symbol claude]($style) "
 symbol = ""
 style = "bold #d97757"
 
 # ── Azure ─────────────────────────────────────────────────────────────────────
-# Laat de actieve subscription zien. Gebruik aliases om lange namen in te korten;
-# de sleutel moet exact de subscriptionnaam of -id zijn (az account list -o table).
-# Icoon: 󰠅
+# Shows the active subscription. Use aliases to shorten long names; the key must
+# match the subscription name or id exactly (az account list -o table).
+# Icon: 󰠅
 [azure]
 disabled = false
 symbol = "󰠅 "
@@ -130,8 +132,8 @@ format = "on [$symbol($subscription)( as $username)]($style) "
 "MyCompany-Management"          = "mgmt"
 
 # ── Terraform ─────────────────────────────────────────────────────────────────
-# Alleen de workspace, geen versie: `terraform version` kost te veel tijd per prompt.
-# Icoon: 󱁢
+# Workspace only, no version: `terraform version` costs too much time per prompt.
+# Icon: 󱁢
 [terraform]
 symbol = "󱁢 "
 style = "bold mauve"
@@ -139,15 +141,15 @@ format = "via [$symbol$workspace]($style) "
 detect_extensions = ["tf", "tfvars", "tfplan", "tfstate", "hcl"]
 detect_folders = [".terraform"]
 
-# ── Duur vorige commando ──────────────────────────────────────────────────────
-# Icoon:  (zandloper). Toont alleen als het vorige commando >2s duurde.
+# ── Previous command duration ─────────────────────────────────────────────────
+# Icon:  (hourglass). Shown only when the previous command took >2s.
 [cmd_duration]
 min_time = 2000
 style = "bold lavender"
 format = "[ took $duration]($style) "
 
-# ── Prompt-teken ──────────────────────────────────────────────────────────────
-# Icoon: ❯ (normale modus), ❮ (vim-modi)
+# ── Prompt character ──────────────────────────────────────────────────────────
+# Icon: ❯ (normal mode), ❮ (vim modes)
 [character]
 disabled = false
 success_symbol = '[❯](bold fg:green)'

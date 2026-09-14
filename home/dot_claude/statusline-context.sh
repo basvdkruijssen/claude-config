@@ -88,19 +88,27 @@ if [ -z "$JQ" ]; then
   done
 fi
 
+# Fields are joined with the ASCII unit separator (0x1f), not tabs: bash's
+# `read` collapses runs of whitespace IFS characters, so an empty field
+# (say, no rate_limits for an API-key session) would shift every later field
+# one slot to the left and print the effort level as a rate-limit percentage.
+# A non-whitespace IFS keeps empty fields in place. Likewise `// ""` rather
+# than `// empty` in jq, which would drop the array element altogether.
+FS=$'\x1f'
+
 extract_fields() {
   if [ -n "$JQ" ]; then
     echo "$input" | jq -r '[
       (.model.display_name // .model.id // "unknown"),
       (.cwd // .workspace.current_dir // ""),
-      (.context_window.total_input_tokens // empty),
-      (.context_window.used_percentage // empty),
-      (.rate_limits.five_hour.used_percentage // empty),
-      (.rate_limits.five_hour.resets_at // empty),
-      (.rate_limits.seven_day.used_percentage // empty),
-      (.rate_limits.seven_day.resets_at // empty),
-      (.effort.level // empty)
-    ] | @tsv'
+      (.context_window.total_input_tokens // ""),
+      (.context_window.used_percentage // ""),
+      (.rate_limits.five_hour.used_percentage // ""),
+      (.rate_limits.five_hour.resets_at // ""),
+      (.rate_limits.seven_day.used_percentage // ""),
+      (.rate_limits.seven_day.resets_at // ""),
+      (.effort.level // "")
+    ] | map(tostring) | join("\u001f")'
   elif [ -n "$PY" ]; then
     echo "$input" | "$PY" -c '
 import json, sys
@@ -128,7 +136,7 @@ fields = [
     g("rate_limits", "seven_day", "resets_at"),
     g("effort", "level"),
 ]
-print("\t".join(str(f) for f in fields))
+print("\x1f".join(str(f) for f in fields))
 '
   fi
 }
@@ -146,7 +154,7 @@ if [ -z "$JQ" ] && [ -z "$PY" ]; then
   exit 0
 fi
 
-IFS=$'\t' read -r model_name cwd_path used_tokens used_pct five_pct five_reset seven_pct seven_reset effort_level <<EOF
+IFS="$FS" read -r model_name cwd_path used_tokens used_pct five_pct five_reset seven_pct seven_reset effort_level <<EOF
 $(extract_fields)
 EOF
 

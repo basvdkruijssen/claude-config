@@ -1,0 +1,5 @@
+# Shell scripts must stay LF: bash rejects CRLF on Linux/macOS/WSL, and chezmoi
+# deploys these files verbatim from its checkout (Windows clones default to
+# core.autocrlf=true, which would otherwise convert them).
+* text=auto
+*.sh text eol=lf

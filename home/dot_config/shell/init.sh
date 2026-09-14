@@ -1,6 +1,6 @@
 # ~/.config/shell/init.sh
 #
-# Source dit bestand vanuit ~/.bashrc of ~/.zshrc:
+# Source this file from ~/.bashrc or ~/.zshrc:
 #   [ -f "$HOME/.config/shell/init.sh" ] && . "$HOME/.config/shell/init.sh"
 
 export STARSHIP_CONFIG="$HOME/.config/starship.toml"
@@ -12,7 +12,7 @@ if command -v starship >/dev/null 2>&1; then
     eval "$(starship init bash)"
   fi
 else
-  echo "Starship niet gevonden: curl -sS https://starship.rs/install.sh | sh" >&2
+  echo "Starship not found: curl -sS https://starship.rs/install.sh | sh" >&2
 fi
 
 # ── Terraform ─────────────────────────────────────────────────────────────────
@@ -27,14 +27,14 @@ alias tff='terraform fmt -recursive'
 alias azwho='az account show --query "{subscription:name, tenant:tenantId, user:user.name}" -o yaml'
 
 azsw() {
-  # Interactief wisselen van Azure subscription (met fzf indien aanwezig).
+  # Interactively switch the Azure subscription (with fzf when available).
   if command -v fzf >/dev/null 2>&1; then
     local sub
     sub=$(az account list --query '[].name' -o tsv | fzf --prompt='Subscription> ') || return
     [ -n "$sub" ] && az account set --subscription "$sub" && azwho
   else
     az account list --query '[].{Name:name, Id:id}' -o table
-    printf 'Subscription (naam of id): '
+    printf 'Subscription (name or id): '
     read -r sub
     [ -n "$sub" ] && az account set --subscription "$sub" && azwho
   fi
@@ -43,6 +43,6 @@ azsw() {
 # ── Claude Code ───────────────────────────────────────────────────────────────
 alias cc='claude'
 
-# ── Machine-specifieke aanvullingen ───────────────────────────────────────────
-# Niet in de repo: ~/.config/shell/init.local.sh (staat in .gitignore).
+# ── Machine-specific additions ────────────────────────────────────────────────
+# Not in the repo: ~/.config/shell/init.local.sh (gitignored).
 [ -f "$HOME/.config/shell/init.local.sh" ] && . "$HOME/.config/shell/init.local.sh"

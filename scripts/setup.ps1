@@ -1,4 +1,4 @@
-#Requires -Version 7
+#Requires -Version 7.4
 # One-shot setup for this machine: Claude Code plugins, global CLAUDE.md,
 # the context-usage status line, and the Starship prompt/shell dotfiles
 # (via chezmoi). Safe to re-run.
@@ -8,13 +8,18 @@
 #   cd claude-config
 #   .\scripts\setup.ps1
 #
-# The symlink steps need an elevated shell or Developer Mode enabled
-# (Settings > Privacy & security > For developers). Run in PowerShell 7 (pwsh);
-# chezmoi is configured to run .ps1 scripts through it rather than Windows
-# PowerShell 5.1.
+# Needs neither elevation nor Developer Mode: nothing is symlinked. chezmoi
+# deploys real files, including ~/.claude/CLAUDE.md and the status-line script,
+# so the script behaves the same on locked-down corporate devices and personal
+# ones. Run in PowerShell 7.4+ (pwsh); chezmoi is configured to run .ps1
+# scripts through it rather than Windows PowerShell 5.1.
 $ErrorActionPreference = "Stop"
+# Without this, a native command (claude, winget, chezmoi, git) exiting non-zero
+# is NOT an error in PowerShell: the script would carry on past a failed
+# `chezmoi init` or `claude plugin install` and still print "Done.", where
+# setup.sh aborts under `set -e`. Needs PowerShell 7.4+.
+$PSNativeCommandUseErrorActionPreference = $true
 
-$RepoRoot = Split-Path -Parent $PSScriptRoot
 $MarketplaceSource = "basvdkruijssen/claude-config"
 $MarketplaceName = "bvdk-claude-config"
 $DotfilesSource = "github.com/basvdkruijssen/claude-config"
@@ -26,7 +31,7 @@ $DotfilesSource = "github.com/basvdkruijssen/claude-config"
 # https://github.com/ryanoasis/nerd-fonts/releases first to confirm it's in there.
 $NerdFontVersion = "v3.5.1"
 
-$TotalSteps = 8
+$TotalSteps = 7
 $script:CurrentStep = 0
 
 # Drives both the native Write-Progress bar (rendered by the console host)
@@ -108,61 +113,10 @@ Write-Host "  installing bvdk-pstack-discipline@$MarketplaceName..."
 claude plugin install "bvdk-pstack-discipline@$MarketplaceName"
 Write-Host "  installing mattpocock-skills..."
 claude plugin install mattpocock-skills
+Write-Host "  installing claude-code-setup and claude-md-management (Anthropic's official helpers)..."
+claude plugin install claude-code-setup
+claude plugin install claude-md-management
 Write-Host "  plugins installed."
-
-# New-Item -ItemType SymbolicLink throws when the shell lacks Developer Mode
-# or elevation, unlike bash's `ln -s` on the same machine, which silently
-# copies instead. Catch that and fall back to a plain copy here too, so both
-# scripts behave the same way and say plainly which one happened: a copy
-# needs this script re-run after every git pull; a symlink applies a pull
-# automatically.
-function Link-OrCopy {
-    param([string]$Src, [string]$Dest)
-    if ((Test-Path $Dest) -and -not (Get-Item $Dest).LinkType) {
-        $ts = Get-Date -Format "yyyyMMddHHmmss"
-        Write-Host "  backing up existing $Dest to $Dest.bak.$ts"
-        Move-Item $Dest "$Dest.bak.$ts"
-    }
-    elseif (Test-Path $Dest) {
-        Remove-Item $Dest -Force
-    }
-    try {
-        New-Item -ItemType SymbolicLink -Path $Dest -Target $Src -ErrorAction Stop | Out-Null
-        Write-Host "  linked $Dest -> $Src (a git pull applies future changes automatically)"
-    }
-    catch {
-        Copy-Item -Path $Src -Destination $Dest -Force
-        Write-Host "  copied $Src -> $Dest (this machine can't create symlinks without Developer Mode or an elevated shell; re-run this script after every git pull to pick up changes)"
-    }
-}
-
-Step "Linking global CLAUDE.md"
-$ClaudeDir = Join-Path $HOME ".claude"
-New-Item -ItemType Directory -Force -Path $ClaudeDir | Out-Null
-Link-OrCopy -Src (Join-Path $RepoRoot "claude-code\CLAUDE.md") -Dest (Join-Path $ClaudeDir "CLAUDE.md")
-
-Step "Wiring up the status line"
-Link-OrCopy -Src (Join-Path $RepoRoot "claude-code\statusline-context.sh") -Dest (Join-Path $ClaudeDir "statusline-context.sh")
-
-$SettingsPath = Join-Path $ClaudeDir "settings.json"
-if (-not (Test-Path $SettingsPath)) {
-    "{}" | Set-Content -Path $SettingsPath -Encoding utf8
-}
-
-# The status line always runs through a bash-compatible shell (Git Bash),
-# regardless of Claude Code's configured defaultShell.
-# The ?? guard covers the same AutomationNull trap as the $PROFILE hook further
-# down: an existing but empty settings.json pipes nothing into ConvertFrom-Json,
-# leaving $settings null and failing the index assignment on the next line.
-$settingsRaw = ((Get-Content -Path $SettingsPath -Raw -ErrorAction SilentlyContinue) ?? '').Trim()
-if ($settingsRaw -eq '') { $settingsRaw = '{}' }
-$settings = $settingsRaw | ConvertFrom-Json -AsHashtable
-$settings["statusLine"] = @{
-    type    = "command"
-    command = "bash ~/.claude/statusline-context.sh"
-}
-$settings | ConvertTo-Json -Depth 20 | Set-Content -Path $SettingsPath -Encoding utf8
-Write-Host "  merged statusLine into $SettingsPath"
 
 Step "Installing the Nerd Font (JetBrainsMono, $NerdFontVersion)"
 # Tracks which version this script last installed, since Windows has no
@@ -178,9 +132,6 @@ $FontMarker = Join-Path $env:LOCALAPPDATA "claude-config\nerdfont-version.txt"
 $installedFontVersion = ((Get-Content $FontMarker -Raw -ErrorAction SilentlyContinue) ?? '').Trim()
 if ($installedFontVersion -eq $NerdFontVersion) {
     Write-Host "  JetBrainsMono Nerd Font $NerdFontVersion already installed, skipping."
-}
-elseif (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-    Write-Warning "winget not found; skipping the Nerd Font install. Install 'App Installer' from the Microsoft Store and re-run this script, or install the font by hand from https://github.com/ryanoasis/nerd-fonts/releases"
 }
 else {
     $zipPath = Join-Path $env:TEMP "JetBrainsMono-NerdFont-$NerdFontVersion.zip"
@@ -224,10 +175,21 @@ else {
 }
 
 Step "Installing Starship + chezmoi"
-Write-Host "  installing Starship.Starship via winget..."
-winget install --id Starship.Starship --accept-package-agreements --accept-source-agreements
-Write-Host "  installing twpayne.chezmoi via winget..."
-winget install --id twpayne.chezmoi --accept-package-agreements --accept-source-agreements
+# Skip winget when the tool is already on PATH (as setup.sh does): a re-run
+# stays quick, and winget's non-zero "already installed" exit code would
+# otherwise abort the script now that native command failures are errors.
+foreach ($tool in @(
+        @{ Name = "starship"; Id = "Starship.Starship" },
+        @{ Name = "chezmoi"; Id = "twpayne.chezmoi" }
+    )) {
+    $found = Get-Command $tool.Name -ErrorAction SilentlyContinue
+    if ($found) {
+        Write-Host "  $($tool.Name) already installed, skipping: $($found.Source)"
+        continue
+    }
+    Write-Host "  installing $($tool.Id) via winget..."
+    winget install --id $tool.Id --accept-package-agreements --accept-source-agreements
+}
 
 # winget's PATH update is only visible in a new shell; reload it for the rest
 # of this script.
@@ -235,7 +197,7 @@ $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
 $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
 $env:Path = "$machinePath;$userPath"
 
-Step "Deploying the Starship prompt and shell dotfiles"
+Step "Deploying dotfiles (prompt, shell profile, ~/.claude)"
 # `chezmoi init <repo>` only clones into the source dir if no git repo is
 # there yet; on a machine already set up from the old standalone `starship`
 # repo, it silently keeps using that old remote instead of switching to this
@@ -244,7 +206,11 @@ Step "Deploying the Starship prompt and shell dotfiles"
 $ChezmoiSrc = Join-Path $HOME ".local\share\chezmoi"
 $skipChezmoiApply = $false
 if (Test-Path (Join-Path $ChezmoiSrc ".git")) {
-    $currentUrl = (git -C $ChezmoiSrc remote get-url origin 2>$null)
+    # No origin remote is a valid answer here, not a failure to abort on.
+    $currentUrl = & {
+        $PSNativeCommandUseErrorActionPreference = $false
+        git -C $ChezmoiSrc remote get-url origin 2>$null
+    }
     if ($currentUrl -and $currentUrl -notmatch "claude-config") {
         Write-Warning "chezmoi's source dir ($ChezmoiSrc) is still tracking $currentUrl, not this repo. 'chezmoi init' will NOT switch it automatically."
         Write-Host "  If $ChezmoiSrc has no changes you care about (check with: git -C `"$ChezmoiSrc`" status), fix it with:"
@@ -256,7 +222,7 @@ if (Test-Path (Join-Path $ChezmoiSrc ".git")) {
 if (-not $skipChezmoiApply) {
     Write-Host "  running: chezmoi init --apply $DotfilesSource"
     chezmoi init --apply $DotfilesSource
-    Write-Host "  dotfiles applied."
+    Write-Host "  dotfiles applied (incl. ~/.claude/CLAUDE.md and ~/.claude/statusline-context.sh)."
 }
 
 if (-not (Test-Path $PROFILE)) {
@@ -281,6 +247,33 @@ else {
     Write-Host "  `$PROFILE already has the dotfiles hook, skipping."
 }
 
+Step "Wiring up the status line"
+# The script itself (~/.claude/statusline-context.sh) was deployed by chezmoi
+# in the previous step; this only points Claude Code at it. settings.json is
+# deliberately NOT managed by chezmoi: Claude Code rewrites it at runtime, so
+# it has to be merged, never replaced.
+$ClaudeDir = Join-Path $HOME ".claude"
+New-Item -ItemType Directory -Force -Path $ClaudeDir | Out-Null
+$SettingsPath = Join-Path $ClaudeDir "settings.json"
+if (-not (Test-Path $SettingsPath)) {
+    "{}" | Set-Content -Path $SettingsPath -Encoding utf8
+}
+
+# The status line always runs through a bash-compatible shell (Git Bash),
+# regardless of Claude Code's configured defaultShell.
+# The ?? guard covers the same AutomationNull trap as the $PROFILE hook in the
+# previous step: an existing but empty settings.json pipes nothing into
+# ConvertFrom-Json, leaving $settings null and failing the index assignment.
+$settingsRaw = ((Get-Content -Path $SettingsPath -Raw -ErrorAction SilentlyContinue) ?? '').Trim()
+if ($settingsRaw -eq '') { $settingsRaw = '{}' }
+$settings = $settingsRaw | ConvertFrom-Json -AsHashtable
+$settings["statusLine"] = @{
+    type    = "command"
+    command = "bash ~/.claude/statusline-context.sh"
+}
+$settings | ConvertTo-Json -Depth 20 | Set-Content -Path $SettingsPath -Encoding utf8
+Write-Host "  merged statusLine into $SettingsPath"
+
 Write-Progress -Activity "claude-config setup" -Completed
 Write-Host ""
 Write-Host "Done. Restart Claude Code (exit, then run 'claude' again) to load the new plugins."
@@ -288,3 +281,7 @@ Write-Host "Then, once per project repo: run /setup-matt-pocock-skills to pick i
 Write-Host ""
 Write-Host "For the prompt/shell dotfiles: run '. `$PROFILE' to pick them up in this terminal,"
 Write-Host "and see docs/starship-prompt.md for day-to-day chezmoi commands and troubleshooting."
+Write-Host ""
+Write-Host "To update this machine later: 'chezmoi update' refreshes everything deployed to ~"
+Write-Host "(prompt, profile, ~/.claude/CLAUDE.md, status line); 'claude plugin update' refreshes"
+Write-Host "the plugins. Re-running this script does both and is safe to repeat."

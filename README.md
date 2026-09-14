@@ -19,10 +19,11 @@ commands) and [`CLAUDE.md`](./CLAUDE.md) for the merged repo's architecture.
 |---|---|---|
 | `mattpocock-skills` | Engineering and productivity skills (grill-with-docs, tdd, code-review, triage, wayfinder, domain-modeling, and more) | Subscribed through Claude Code's official plugin marketplace. Auto-updates, read-only. |
 | `bvdk-pstack-discipline` (this repo) | 27 writing-discipline and engineering-principle skills ported from pstack | You own it. Update by editing this repo and pushing. |
-| `claude-code/CLAUDE.md` | Global Claude Code instructions | Symlinked from `~/.claude/CLAUDE.md` on each machine. |
-| `claude-code/statusline-context.sh` | Status line: model + reasoning effort, directory, git branch, context usage, and 5h/7d rate-limit usage | Symlinked from `~/.claude/statusline-context.sh`; merged into `~/.claude/settings.json` through `statusLine`. |
-| `desktop-skills/` | 5 zip-ready skill bundles for Claude Desktop | Manual upload. Desktop has no marketplace mechanism (see below). |
-| `home/` + `.chezmoiroot` | Cross-shell Starship prompt (PowerShell 7, bash, zsh), plus Terraform/Azure shell aliases | Deployed to `~` on every machine via [chezmoi](https://www.chezmoi.io), driven by `chezmoi init --apply` against this same repo. See [`docs/starship-prompt.md`](./docs/starship-prompt.md). |
+| `claude-code-setup`, `claude-md-management` | Anthropic's official helper plugins for configuring Claude Code and maintaining `CLAUDE.md` files | Subscribed through Claude Code's official plugin marketplace. Auto-updates, read-only. |
+| `home/dot_claude/CLAUDE.md` | Global Claude Code instructions | Deployed to `~/.claude/CLAUDE.md` by chezmoi, like the dotfiles below. `chezmoi update` refreshes it. |
+| `home/dot_claude/statusline-context.sh` | Status line: model + reasoning effort, directory, git branch, context usage, and 5h/7d rate-limit usage | Deployed to `~/.claude/statusline-context.sh` by chezmoi; the setup script points `statusLine` in `~/.claude/settings.json` at it. |
+| `scripts/package-desktop-skills.*` | Builds 5 skill zips for Claude Desktop from the plugin's skills | Manual upload. Desktop has no marketplace mechanism (see below). |
+| `home/` + `.chezmoiroot` | Cross-shell Starship prompt (PowerShell 7, bash, zsh), plus Terraform/Azure shell aliases, plus the two `~/.claude` files above | Deployed to `~` on every machine via [chezmoi](https://www.chezmoi.io), driven by `chezmoi init --apply` against this same repo. See [`docs/starship-prompt.md`](./docs/starship-prompt.md). |
 
 ## Why these two sources, and not more
 
@@ -95,33 +96,62 @@ cd claude-config
 2. Installs the Claude Code CLI itself via the native installer if it isn't
    already on `PATH`, then adds this repo as a Claude Code plugin
    marketplace, installs `bvdk-pstack-discipline` from it, and installs
-   `mattpocock-skills` from Claude Code's official marketplace.
-3. Symlinks `claude-code/CLAUDE.md` to `~/.claude/CLAUDE.md` and
-   `claude-code/statusline-context.sh` to `~/.claude/statusline-context.sh`,
-   and wires the status line into `~/.claude/settings.json`.
-4. Installs a Nerd Font (Windows: automatically, pinned to a recent Nerd
+   `mattpocock-skills`, `claude-code-setup` and `claude-md-management` from
+   Claude Code's official marketplace.
+3. Installs a Nerd Font (Windows: automatically, pinned to a recent Nerd
    Fonts release; macOS/Linux: prints the one command to run yourself, since
    that can't be automated the same way).
-5. Installs Starship and chezmoi.
-6. Runs `chezmoi init --apply` against this repo to deploy the prompt config,
-   PowerShell profile, and shell init script to `~`, and — Windows only —
-   installs the `Terminal-Icons`/`Az`/`Az.Tools.Predictor` PowerShell modules.
-   You'll be prompted once for machine type (`work`/`personal`); the answer
-   is stored locally, not in the repo.
-7. Hooks the deployed dotfiles into `$PROFILE` (Windows) or
-   `.bashrc`/`.zshrc` (macOS/Linux/WSL), if not already hooked.
+4. Installs Starship and chezmoi, skipping whichever is already on `PATH`.
+5. Runs `chezmoi init --apply` against this repo to deploy the prompt config,
+   PowerShell profile, shell init script, global `~/.claude/CLAUDE.md` and
+   `~/.claude/statusline-context.sh` to `~`, and — Windows only — installs
+   the `Terminal-Icons`/`Az`/`Az.Tools.Predictor` PowerShell modules. You'll
+   be prompted once for machine type (`work`/`personal`); the answer is
+   stored locally, not in the repo. Then hooks the deployed profile into
+   `$PROFILE` (Windows) or `.bashrc`/`.zshrc` (macOS/Linux/WSL), if not
+   already hooked.
+6. Wires the status line into `~/.claude/settings.json` (a merge, since
+   Claude Code rewrites that file itself; that's why it isn't chezmoi-managed).
 
 It's safe to re-run. Restart Claude Code to load the new plugins, and open a
 new terminal (or `. $PROFILE` / `exec "$SHELL" -l`) to pick up the prompt.
 
-On Windows, the CLAUDE.md/status-line symlinks need Developer Mode (Settings
-→ Privacy & security → For developers) or an elevated shell. Without either,
-the script falls back to a plain copy and says so explicitly; a copy means
-step 1's `git pull` won't reach `~/.claude` on its own, so re-run
-`./scripts/setup.ps1` after every pull to apply changes. A real symlink
-applies a pull automatically, with nothing further to run. This doesn't
-affect the chezmoi-deployed dotfiles — chezmoi manages its own copy-vs-link
-behavior independently.
+**No elevation, no Developer Mode, no symlinks.** Every file the script puts
+in `~` is a real file written by chezmoi, so it behaves identically on a
+locked-down corporate device and a personal one. A machine set up by an
+older version of this script, which symlinked `~/.claude/CLAUDE.md` and the
+status line into the repo checkout, gets those links replaced by regular
+files on the first `chezmoi apply`; nothing to clean up by hand.
+
+**OneDrive.** The only file the script touches outside `~/.config` and
+`~/.claude` is the PowerShell `$PROFILE`, wherever PowerShell resolves it: a
+plain `Documents\PowerShell` on a personal device, or the OneDrive-redirected
+Documents folder on a corporate device with Known Folder Move. PowerShell
+hard-codes that location, so it can't be moved; the script therefore writes
+only one device-independent line there, `. "$HOME\.config\powershell\profile.ps1"`,
+and keeps all real content under `~/.config`. OneDrive syncing that one line
+between devices is harmless.
+
+### Updating an existing machine
+
+Everything deployed to `~` (prompt, shell profile, global `CLAUDE.md`, status
+line) updates with one command on every OS. It pulls chezmoi's own clone of
+this repo and applies the result:
+
+```bash
+chezmoi update
+```
+
+The plugin updates through Claude Code (restart it afterwards):
+
+```bash
+claude plugin marketplace update bvdk-claude-config
+claude plugin update bvdk-pstack-discipline@bvdk-claude-config
+```
+
+Or `git pull` this checkout and re-run the setup script, which does both and
+is safe to repeat. Claude Desktop is the exception: rebuild and re-upload the
+zips by hand (see below).
 
 For the prompt's design, day-to-day chezmoi commands (`chezmoi edit`,
 `chezmoi diff`, `chezmoi update`), and troubleshooting, see
@@ -199,15 +229,18 @@ make this fully hands-off without going through Anthropic's Skills API (see
 ./scripts/package-desktop-skills.sh    # or .ps1 on Windows
 ```
 
-Produces `dist/desktop-skills/*.zip`. Upload each one by hand: `unslop`,
-`no-comments`, `technical-writing`, `bro`, and `engineering-principles` (the
-23 principle skills bundled into one reference doc; uploading 23 near-empty
-zips individually isn't practical on Desktop, so ask for a principle by name
-and Claude reads it out of the bundle). mattpocock's skills aren't packaged
-for Desktop; they're distributed only as a Claude Code plugin upstream.
+Builds `dist/desktop-skills/*.zip` straight from
+`plugins/bvdk-pstack-discipline/skills/`, so there is no second copy of any
+skill to keep in sync. Upload each one by hand: `unslop`, `no-comments`,
+`technical-writing`, `bro`, and `engineering-principles` (the 23 principle
+skills bundled into one reference doc with cross-links rewritten to heading
+anchors; uploading 23 near-empty zips individually isn't practical on
+Desktop, so ask for a principle by name and Claude reads it out of the
+bundle). mattpocock's skills aren't packaged for Desktop; they're distributed
+only as a Claude Code plugin upstream.
 
-You'll repeat the upload after any change to `desktop-skills/`. That's a
-platform limitation, not a design choice.
+You'll re-run the script and repeat the upload after any change to the
+plugin's skills. That's a platform limitation, not a design choice.
 
 ## Maintaining this repo
 
@@ -215,12 +248,20 @@ platform limitation, not a design choice.
   `plugins/bvdk-pstack-discipline/skills/<name>/`, bump `version` in both
   `.claude-plugin/plugin.json` and the marketplace entry, then commit and
   push. Every machine picks it up on `claude plugin update` (or reinstall).
+  A new `principle-*` skill lands in the Desktop bundle automatically; a new
+  standalone skill needs adding to the `STANDALONE` list in both
+  `scripts/package-desktop-skills.*` to get its own Desktop zip.
 - **Pulling upstream pstack changes.** This is a manual port, not a live
   subscription. Re-check the source files under `skills/` listed in
   `NOTICE.md` periodically and re-copy by hand if they've changed in a
   meaningful way. There's no auto-update path here by design, since
   Cursor-specific content would come along with it.
 - **mattpocock-skills.** Updates on its own. Nothing to do here.
+- **The global `CLAUDE.md` and status line.** They live in `home/dot_claude/`
+  and are deployed exactly like the dotfiles below, so the same rules apply:
+  `chezmoi edit ~/.claude/CLAUDE.md` (or edit in the repo), commit, push,
+  `chezmoi update` elsewhere. Never edit `~/.claude/CLAUDE.md` in place; the
+  next `chezmoi apply` overwrites it.
 - **The Starship prompt / shell dotfiles.** Edit through chezmoi, not
   directly in `~` (`chezmoi edit ~/.config/starship.toml`, `chezmoi diff`,
   `chezmoi apply`), then `chezmoi cd` and commit/push from there. See
@@ -236,14 +277,13 @@ because each needs a decision only you can make: a new dependency, an API
 key, or ongoing upkeep. Listed here so you can pick one up later without
 re-researching it.
 
-- **Extending chezmoi's reach.** chezmoi already manages the Starship
-  prompt and shell dotfiles (`home/`). It could go further and also manage
-  `~/.claude/settings.json`, hooks, output styles, and other non-Claude
-  dotfiles, replacing the remaining hand-rolled `Link-OrCopy`/`link_or_copy`
-  symlink-or-copy logic in `scripts/setup.*` for `CLAUDE.md` and the status
-  line too. Not done here to keep this merge's blast radius to "one script,
-  two things it sets up" rather than restructuring already-working symlink
-  logic.
+- **Extending chezmoi's reach further.** chezmoi already manages the
+  Starship prompt, the shell dotfiles, the global `CLAUDE.md` and the status
+  line. Next candidates are `~/.claude/settings.json` (needs a chezmoi
+  `modify_` script, because Claude Code rewrites the file and a plain replace
+  would clobber its edits), hooks and output styles under `~/.claude`, and
+  the Windows Terminal `settings.json` (colour scheme, font) that
+  `docs/starship-prompt.md` lists as a todo.
 - **Claude Desktop skill sync through the Skills API.** Anthropic's platform
   Skills API can create and update skills programmatically, which could
   replace the manual zip-upload step with a script run from CI or this repo.
