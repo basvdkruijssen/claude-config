@@ -92,10 +92,54 @@ echo "  plugins installed."
 
 step "Nerd Font"
 echo "  The Starship prompt below needs a Nerd Font in your terminal emulator for"
-echo "  icons to render. This isn't automated on macOS/Linux; install one, e.g.:"
-echo "    brew install --cask font-jetbrains-mono-nerd-font   # macOS"
-echo "  On WSL, install the font on the Windows side; the terminal emulator picks"
-echo "  the font, not the Linux guest."
+echo "  icons to render (otherwise git-branch/clock/folder/etc. show as '?')."
+NERD_FONT_NAME="JetBrainsMono Nerd Font Mono"
+case "$(uname -s)" in
+  Darwin)
+    if command -v brew >/dev/null 2>&1; then
+      if brew list --cask font-jetbrains-mono-nerd-font >/dev/null 2>&1; then
+        echo "  JetBrainsMono Nerd Font already installed, skipping."
+      else
+        echo "  installing (brew install --cask font-jetbrains-mono-nerd-font)..."
+        brew install --cask font-jetbrains-mono-nerd-font
+        echo "  font installed."
+      fi
+    else
+      echo "  Homebrew not found; install the font manually from:" >&2
+      echo "    https://github.com/ryanoasis/nerd-fonts/releases (JetBrainsMono.zip)" >&2
+    fi
+    echo "  Installing the font is not enough -- each terminal app picks its own font,"
+    echo "  and that's a GUI setting this script can't automate. Set it now:"
+    echo "    iTerm2:       Settings (Cmd+,) > Profiles > <profile> > Text > Font"
+    echo "    Terminal.app: Settings (Cmd+,) > Profiles > <profile> > Font > Change..."
+    echo "    VS Code:      Settings > terminal.integrated.fontFamily"
+    echo "    In all cases, pick: \"$NERD_FONT_NAME\", then open a new tab/window."
+    ;;
+  Linux)
+    if grep -qi microsoft /proc/version 2>/dev/null; then
+      echo "  Detected WSL: install the font on the Windows side, not in this Linux guest"
+      echo "  -- the terminal emulator (e.g. Windows Terminal) picks the font, the WSL"
+      echo "  guest has no say in it. Download JetBrainsMono.zip from:"
+      echo "    https://github.com/ryanoasis/nerd-fonts/releases"
+      echo "  then, on Windows: right-click each .ttf > Install, and set it in the"
+      echo "  terminal's GUI: Windows Terminal > Settings > Profiles > <profile> >"
+      echo "  Appearance > Font face -> \"$NERD_FONT_NAME\"."
+    else
+      echo "  Not automated on Linux; install one manually, e.g.:"
+      echo "    https://github.com/ryanoasis/nerd-fonts/releases (JetBrainsMono.zip),"
+      echo "    unzip into ~/.local/share/fonts, then run: fc-cache -fv"
+      echo "  Then set it in your terminal emulator's GUI settings, e.g.:"
+      echo "    GNOME Terminal: Preferences > Profile > Text > Custom font"
+      echo "    Konsole:        Settings > Edit Current Profile > Appearance > Font"
+      echo "    In all cases, pick: \"$NERD_FONT_NAME\", then open a new tab/window."
+    fi
+    ;;
+  *)
+    echo "  Unrecognized OS ($(uname -s)); install a Nerd Font manually from:"
+    echo "    https://github.com/ryanoasis/nerd-fonts/releases (JetBrainsMono.zip)"
+    echo "  and set \"$NERD_FONT_NAME\" as your terminal emulator's font in its GUI settings."
+    ;;
+esac
 
 step "Installing Starship + chezmoi"
 if command -v starship >/dev/null 2>&1; then
