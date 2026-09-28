@@ -1,4 +1,4 @@
-# bvdk-claude-config
+# Terminal Setup
 
 A durable, git-based configuration for Claude Code and Claude Desktop, plus
 the terminal prompt and shell dotfiles I use alongside them, across multiple
