@@ -1,0 +1,124 @@
+name: Security scan
+
+# Lints and secret-scans every shell/PowerShell script in the repo. Runs on
+# pull_request (not pull_request_target), so forked-repo PRs execute this
+# with a read-only GITHUB_TOKEN and no access to repo secrets - safe for
+# untrusted external contributions. These checks are required status checks
+# on main (see branch protection), so a PR cannot merge until they pass.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run ShellCheck on all shell scripts
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(git ls-files '*.sh')
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No shell scripts found."
+            exit 0
+          fi
+          printf 'Scanning:\n%s\n' "${files[*]}"
+          # warning+ only (drops info/style noise like "consider quoting for
+          # readability"); SC2034 (unused variable) is excluded because it's a
+          # correctness nit, not a vulnerability or security risk.
+          shellcheck --severity=warning --exclude=SC2034 "${files[@]}"
+
+  psscriptanalyzer:
+    name: psscriptanalyzer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run PSScriptAnalyzer on all PowerShell scripts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser -Repository PSGallery
+
+          $targets = @(Get-ChildItem -Path . -Recurse -Filter *.ps1 -File | Select-Object -ExpandProperty FullName)
+
+          # .ps1.tmpl files are chezmoi go-templates, not plain PowerShell. Strip
+          # the template-only directive lines ({{- if ... -}}, {{- end }}) into a
+          # temp copy so the remaining PowerShell body can still be linted.
+          $tmplFiles = Get-ChildItem -Path . -Recurse -Filter *.ps1.tmpl -File
+          if ($tmplFiles.Count -gt 0) {
+              $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) "ps-tmpl-lint"
+              New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+              foreach ($f in $tmplFiles) {
+                  $content = Get-Content -Path $f.FullName -Raw
+                  $stripped = ($content -split "`n" | Where-Object { $_ -notmatch '^\s*\{\{-?.*-?\}\}\s*$' }) -join "`n"
+                  $outPath = Join-Path $tempDir ($f.BaseName + ".ps1")
+                  Set-Content -Path $outPath -Value $stripped
+                  $targets += $outPath
+              }
+          }
+
+          if ($targets.Count -eq 0) {
+              Write-Host "No PowerShell scripts found."
+              exit 0
+          }
+
+          Write-Host "Scanning:`n$($targets -join "`n")"
+
+          # Scoped to PSScriptAnalyzer's security-relevant rules (credential
+          # handling, plaintext secrets, weak hashes), not its full default
+          # rule set, which is mostly style/best-practice (e.g.
+          # PSAvoidUsingWriteHost) unrelated to vulnerabilities or security
+          # risk. Parse errors are always reported regardless.
+          #
+          # PSAvoidUsingInvokeExpression is deliberately excluded: this repo's
+          # only uses of it are `Invoke-Expression (starship init ...)` /
+          # `(& starship init ...)`, the standard, documented way every shell
+          # evaluates its own prompt tool's init output (same pattern
+          # Starship's own install docs use) - trusted local-binary output,
+          # not untrusted input, so it's a permanent false positive here.
+          $securityRules = @(
+              'PSAvoidUsingAllowUnencryptedAuthentication'
+              'PSAvoidUsingBrokenHashAlgorithms'
+              'PSAvoidUsingComputerNameHardcoded'
+              'PSAvoidUsingConvertToSecureStringWithPlainText'
+              'PSAvoidUsingPlainTextForPassword'
+              'PSAvoidUsingUsernameAndPasswordParams'
+              'PSUsePSCredentialType'
+          )
+
+          # Invoke-ScriptAnalyzer's -Path takes a single path, not an array,
+          # so each target is analyzed separately and results are combined.
+          $results = @()
+          foreach ($target in $targets) {
+              $results += Invoke-ScriptAnalyzer -Path $target -IncludeRule $securityRules
+          }
+
+          if ($results) {
+              $results | Format-Table -AutoSize | Out-String -Width 200 | Write-Host
+              Write-Error "PSScriptAnalyzer found $($results.Count) issue(s)."
+              exit 1
+          }
+
+          Write-Host "No issues found."
+
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

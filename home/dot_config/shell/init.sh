@@ -2,6 +2,11 @@
 #
 # Source this file from ~/.bashrc or ~/.zshrc:
 #   [ -f "$HOME/.config/shell/init.sh" ] && . "$HOME/.config/shell/init.sh"
+#
+# Sourced (never executed directly), so there's no shebang for ShellCheck to
+# infer a dialect from. zsh isn't a dialect ShellCheck supports, and this
+# file's syntax is plain bash/POSIX, so bash is the right one to lint as.
+# shellcheck shell=bash
 
 export STARSHIP_CONFIG="$HOME/.config/starship.toml"
 
