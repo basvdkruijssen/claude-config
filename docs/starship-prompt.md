@@ -117,9 +117,14 @@ repo was merged into this one. If chezmoi's source directory on a machine still
 points at that old remote, the setup script warns and skips the apply step; see
 "Migrating" in the root README for the fix.
 
-By hand, after the scripts: set `JetBrainsMono Nerd Font` as the font in
-Windows Terminal (Settings → Profiles → Defaults → Appearance → Font face) and
-optionally VS Code (`terminal.integrated.fontFamily`). The winget package
+`setup.ps1` also sets `JetBrainsMono Nerd Font` as the default font in Windows
+Terminal (`profiles.defaults.font.face`), unless a default font is already set
+there; it keeps the original as `settings.json.bak`, since the rewrite drops
+comments. A font set on an individual profile overrides that default, so
+change those by hand (Settings → the profile → Appearance → Font face). If
+Windows Terminal was never launched, its `settings.json` doesn't exist yet:
+launch it once and re-run the script. By hand, after the scripts: optionally
+VS Code (`terminal.integrated.fontFamily`). The winget package
 `DEVCOM.JetBrainsMonoNerdFont` lags upstream and lacks the `cod-claude` icon
 (U+EC82); `setup.ps1` therefore installs a pinned release straight from
 [Nerd Fonts](https://github.com/ryanoasis/nerd-fonts/releases).

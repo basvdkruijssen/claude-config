@@ -171,7 +171,51 @@ else {
 
     New-Item -ItemType Directory -Force -Path (Split-Path $FontMarker) | Out-Null
     Set-Content -Path $FontMarker -Value $NerdFontVersion
-    Write-Host "  Set 'JetBrainsMono Nerd Font' as the font in Windows Terminal / VS Code."
+    Write-Host "  Set 'JetBrainsMono Nerd Font' as the font in VS Code."
+}
+
+# Installing the font does nothing visible until the terminal uses it: Windows
+# Terminal keeps its default Cascadia Mono, which lacks the Starship icons.
+# Set it as the default for all profiles unless a font is already chosen there
+# (profile-specific fonts still win over defaults, so those are left alone).
+# The DirectWrite name works here; only conhost needs the GDI "JetBrainsMono NF".
+$NerdFontFace = "JetBrainsMono Nerd Font"
+$wtSettingsPaths = @(
+    "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
+    "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\LocalState\settings.json"
+    "$env:LOCALAPPDATA\Microsoft\Windows Terminal\settings.json"  # unpackaged (scoop, portable)
+) | Where-Object { Test-Path $_ }
+if (-not $wtSettingsPaths) {
+    Write-Host "  Windows Terminal settings not found (not installed, or never launched yet)."
+    Write-Host "  Re-run this script after first launching it, or set its font to '$NerdFontFace' by hand."
+}
+foreach ($wtPath in $wtSettingsPaths) {
+    # Same AutomationNull guard as the other Get-Content -Raw reads.
+    $wtRaw = ((Get-Content -Path $wtPath -Raw -ErrorAction SilentlyContinue) ?? '').Trim()
+    if ($wtRaw -eq '') { $wtRaw = '{}' }
+    # ConvertFrom-Json accepts the JSONC Windows Terminal writes (comments,
+    # trailing commas) and -AsHashtable keeps key order.
+    $wt = $wtRaw | ConvertFrom-Json -AsHashtable
+    if ($null -eq $wt["profiles"]) { $wt["profiles"] = [ordered]@{} }
+    if ($wt["profiles"] -is [System.Collections.IList]) {
+        # Pre-1.0 format: "profiles" is a bare list with nowhere to put defaults.
+        Write-Warning "$wtPath uses the old profiles-array format; set its font to '$NerdFontFace' by hand."
+        continue
+    }
+    if ($null -eq $wt["profiles"]["defaults"]) { $wt["profiles"]["defaults"] = [ordered]@{} }
+    $wtDefaults = $wt["profiles"]["defaults"]
+    # "fontFace" is the pre-1.10 spelling of font.face; still honoured.
+    $currentFace = $wtDefaults["font"]?["face"] ?? $wtDefaults["fontFace"]
+    if ($currentFace) {
+        Write-Host "  Windows Terminal default font already set to '$currentFace' in $wtPath, leaving it."
+        continue
+    }
+    if ($null -eq $wtDefaults["font"]) { $wtDefaults["font"] = [ordered]@{} }
+    $wtDefaults["font"]["face"] = $NerdFontFace
+    # Rewriting drops any comments in the file, so keep the original next to it.
+    Copy-Item -Path $wtPath -Destination "$wtPath.bak" -Force
+    $wt | ConvertTo-Json -Depth 20 | Set-Content -Path $wtPath -Encoding utf8
+    Write-Host "  set Windows Terminal default font to '$NerdFontFace' in $wtPath (backup: settings.json.bak)"
 }
 
 Step "Installing Starship + chezmoi"
