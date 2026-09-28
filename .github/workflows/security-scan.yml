@@ -31,7 +31,10 @@ jobs:
             exit 0
           fi
           printf 'Scanning:\n%s\n' "${files[*]}"
-          shellcheck "${files[@]}"
+          # warning+ only (drops info/style noise like "consider quoting for
+          # readability"); SC2034 (unused variable) is excluded because it's a
+          # correctness nit, not a vulnerability or security risk.
+          shellcheck --severity=warning --exclude=SC2034 "${files[@]}"
 
   psscriptanalyzer:
     name: psscriptanalyzer
@@ -69,7 +72,13 @@ jobs:
           }
 
           Write-Host "Scanning:`n$($targets -join "`n")"
-          $results = Invoke-ScriptAnalyzer -Path $targets -Severity Warning,Error
+
+          # Invoke-ScriptAnalyzer's -Path takes a single path, not an array,
+          # so each target is analyzed separately and results are combined.
+          $results = @()
+          foreach ($target in $targets) {
+              $results += Invoke-ScriptAnalyzer -Path $target -Severity Warning,Error
+          }
 
           if ($results) {
               $results | Format-Table -AutoSize | Out-String -Width 200 | Write-Host
