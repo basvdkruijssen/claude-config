@@ -1,0 +1,93 @@
+name: Security scan
+
+# Lints and secret-scans every shell/PowerShell script in the repo. Runs on
+# pull_request (not pull_request_target), so forked-repo PRs execute this
+# with a read-only GITHUB_TOKEN and no access to repo secrets - safe for
+# untrusted external contributions. These checks are required status checks
+# on main (see branch protection), so a PR cannot merge until they pass.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run ShellCheck on all shell scripts
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(git ls-files '*.sh')
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No shell scripts found."
+            exit 0
+          fi
+          printf 'Scanning:\n%s\n' "${files[*]}"
+          shellcheck "${files[@]}"
+
+  psscriptanalyzer:
+    name: psscriptanalyzer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run PSScriptAnalyzer on all PowerShell scripts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser -Repository PSGallery
+
+          $targets = @(Get-ChildItem -Path . -Recurse -Filter *.ps1 -File | Select-Object -ExpandProperty FullName)
+
+          # .ps1.tmpl files are chezmoi go-templates, not plain PowerShell. Strip
+          # the template-only directive lines ({{- if ... -}}, {{- end }}) into a
+          # temp copy so the remaining PowerShell body can still be linted.
+          $tmplFiles = Get-ChildItem -Path . -Recurse -Filter *.ps1.tmpl -File
+          if ($tmplFiles.Count -gt 0) {
+              $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) "ps-tmpl-lint"
+              New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+              foreach ($f in $tmplFiles) {
+                  $content = Get-Content -Path $f.FullName -Raw
+                  $stripped = ($content -split "`n" | Where-Object { $_ -notmatch '^\s*\{\{-?.*-?\}\}\s*$' }) -join "`n"
+                  $outPath = Join-Path $tempDir ($f.BaseName + ".ps1")
+                  Set-Content -Path $outPath -Value $stripped
+                  $targets += $outPath
+              }
+          }
+
+          if ($targets.Count -eq 0) {
+              Write-Host "No PowerShell scripts found."
+              exit 0
+          }
+
+          Write-Host "Scanning:`n$($targets -join "`n")"
+          $results = Invoke-ScriptAnalyzer -Path $targets -Severity Warning,Error
+
+          if ($results) {
+              $results | Format-Table -AutoSize | Out-String -Width 200 | Write-Host
+              Write-Error "PSScriptAnalyzer found $($results.Count) issue(s)."
+              exit 1
+          }
+
+          Write-Host "No issues found."
+
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
