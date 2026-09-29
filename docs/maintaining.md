@@ -22,6 +22,30 @@ The global `CLAUDE.md`, status line, prompt and shell dotfiles live under
 push, then run `chezmoi update` on other machines. Do not hand-type or
 LLM-edit Nerd Font glyphs in `starship.toml`; see `CLAUDE.md` for why.
 
+## Machines installed before the repo rename
+
+The repo was renamed from `claude-config` to `terminal-config`, and the plugin
+marketplace from `bvdk-claude-config` to `bvdk-terminal-config`. GitHub
+redirects the old repo URL, so chezmoi keeps working on those machines and
+`chezmoi update` needs no action. The marketplace name is what `claude plugin
+update` uses, so the old one stops matching. To move over, `git pull` this
+checkout (or re-clone it) and re-run the setup script. It removes the old
+marketplace and its plugin, installs the new ones, and moves the Windows font
+marker, so nothing reinstalls.
+
+To do it by hand:
+
+```bash
+claude plugin uninstall bvdk-pstack-discipline@bvdk-claude-config
+claude plugin marketplace remove bvdk-claude-config
+claude plugin marketplace add basvdkruijssen/terminal-config
+claude plugin install bvdk-pstack-discipline@bvdk-terminal-config
+git -C ~/.local/share/chezmoi remote set-url origin https://github.com/basvdkruijssen/terminal-config.git
+```
+
+Restart Claude Code afterwards. The last command is optional tidying, and the
+redirect works without it. Set a local checkout's remote the same way.
+
 ## Migrating a machine set up from the old `starship` repo
 
 `chezmoi init <repo>` only clones into `~/.local/share/chezmoi` when no git

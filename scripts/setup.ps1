@@ -21,7 +21,7 @@ $ErrorActionPreference = "Stop"
 $PSNativeCommandUseErrorActionPreference = $true
 
 $MarketplaceSource = "basvdkruijssen/terminal-config"
-$MarketplaceName = "bvdk-claude-config"
+$MarketplaceName = "bvdk-terminal-config"
 $DotfilesSource = "github.com/basvdkruijssen/terminal-config"
 
 # Pinned Nerd Fonts release. The winget package (DEVCOM.JetBrainsMonoNerdFont)
@@ -105,6 +105,17 @@ else {
 }
 
 Step "Installing Claude Code plugins"
+# The marketplace was renamed from bvdk-claude-config. Drop the old registration
+# so the plugin isn't installed twice; a fresh install below replaces it.
+$LegacyMarketplaceName = "bvdk-claude-config"
+if ((claude plugin marketplace list 2>$null) -match $LegacyMarketplaceName) {
+    Write-Host "  removing legacy marketplace $LegacyMarketplaceName..."
+    & {
+        $PSNativeCommandUseErrorActionPreference = $false
+        claude plugin uninstall "bvdk-pstack-discipline@$LegacyMarketplaceName"
+        claude plugin marketplace remove $LegacyMarketplaceName
+    }
+}
 Write-Host "  adding marketplace $MarketplaceSource..."
 claude plugin marketplace add $MarketplaceSource
 Write-Host "  adding marketplace anthropics/claude-plugins-official (hosts mattpocock-skills)..."
@@ -125,7 +136,14 @@ Step "Installing the Nerd Font (JetBrainsMono, $NerdFontVersion)"
 # every file every time, and each file triggers its own "install this font?"
 # prompt (16 of them for this family). Bump $NerdFontVersion above to force a
 # reinstall; delete this marker file to force one without bumping the version.
-$FontMarker = Join-Path $env:LOCALAPPDATA "claude-config\nerdfont-version.txt"
+$FontMarker = Join-Path $env:LOCALAPPDATA "terminal-config\nerdfont-version.txt"
+# The marker lived under claude-config before the repo rename. Carry it over so
+# an up-to-date font isn't reinstalled.
+$LegacyFontMarker = Join-Path $env:LOCALAPPDATA "claude-config\nerdfont-version.txt"
+if ((Test-Path $LegacyFontMarker) -and -not (Test-Path $FontMarker)) {
+    New-Item -ItemType Directory -Force -Path (Split-Path $FontMarker) | Out-Null
+    Move-Item $LegacyFontMarker $FontMarker
+}
 # ?? guards the AutomationNull trap again (see the $PROFILE hook below): a
 # truncated, empty marker file would otherwise throw on .Trim() and, with
 # $ErrorActionPreference = "Stop", abort the whole setup run.

@@ -14,7 +14,7 @@
 set -euo pipefail
 
 MARKETPLACE_SOURCE="basvdkruijssen/terminal-config"
-MARKETPLACE_NAME="bvdk-claude-config"
+MARKETPLACE_NAME="bvdk-terminal-config"
 DOTFILES_SOURCE="github.com/basvdkruijssen/terminal-config"
 
 TOTAL_STEPS=7
@@ -77,6 +77,14 @@ else
 fi
 
 step "Installing Claude Code plugins"
+# The marketplace was renamed from bvdk-claude-config. Drop the old registration
+# so the plugin isn't installed twice; a fresh install below replaces it.
+LEGACY_MARKETPLACE_NAME="bvdk-claude-config"
+if claude plugin marketplace list 2>/dev/null | grep -q "$LEGACY_MARKETPLACE_NAME"; then
+  echo "  removing legacy marketplace $LEGACY_MARKETPLACE_NAME..."
+  claude plugin uninstall "bvdk-pstack-discipline@${LEGACY_MARKETPLACE_NAME}" || true
+  claude plugin marketplace remove "$LEGACY_MARKETPLACE_NAME" || true
+fi
 echo "  adding marketplace $MARKETPLACE_SOURCE..."
 claude plugin marketplace add "$MARKETPLACE_SOURCE"
 echo "  adding marketplace anthropics/claude-plugins-official (hosts mattpocock-skills)..."

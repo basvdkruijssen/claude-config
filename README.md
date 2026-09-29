@@ -78,8 +78,8 @@ chezmoi update
 Plugins, then restart Claude Code:
 
 ```bash
-claude plugin marketplace update bvdk-claude-config
-claude plugin update bvdk-pstack-discipline@bvdk-claude-config
+claude plugin marketplace update bvdk-terminal-config
+claude plugin update bvdk-pstack-discipline@bvdk-terminal-config
 ```
 
 Or `git pull` and re-run the setup script, which does both. Claude Desktop
