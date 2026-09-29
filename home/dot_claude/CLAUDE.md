@@ -1,6 +1,6 @@
 <!--
 Global Claude Code instructions, deployed to ~/.claude/CLAUDE.md by chezmoi
-from home/dot_claude/ in the claude-config repo: a real file on every machine,
+from home/dot_claude/ in the terminal-config repo: a real file on every machine,
 no symlinks, no Developer Mode. Edit it here (or `chezmoi edit
 ~/.claude/CLAUDE.md`), commit, push, then `chezmoi update` on your other
 machines — no per-machine copy/paste. Don't edit ~/.claude/CLAUDE.md in place;
