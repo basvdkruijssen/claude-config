@@ -27,8 +27,8 @@ Requires `git` and `curl` (macOS/Linux/WSL), or `winget`, `git` and
 PowerShell 7.4+ (Windows).
 
 ```bash
-git clone https://github.com/basvdkruijssen/claude-config.git
-cd claude-config
+git clone https://github.com/basvdkruijssen/terminal-config.git
+cd terminal-config
 ./scripts/setup.sh          # macOS, Linux, WSL
 ```
 
