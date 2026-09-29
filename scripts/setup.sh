@@ -4,8 +4,8 @@
 # (via chezmoi). Safe to re-run.
 #
 # Usage:
-#   git clone https://github.com/basvdkruijssen/claude-config.git
-#   cd claude-config
+#   git clone https://github.com/basvdkruijssen/terminal-config.git
+#   cd terminal-config
 #   ./scripts/setup.sh
 #
 # Needs no elevation and creates no symlinks: chezmoi deploys real files,
@@ -13,9 +13,9 @@
 # behaves the same on locked-down corporate devices and personal ones.
 set -euo pipefail
 
-MARKETPLACE_SOURCE="basvdkruijssen/claude-config"
+MARKETPLACE_SOURCE="basvdkruijssen/terminal-config"
 MARKETPLACE_NAME="bvdk-claude-config"
-DOTFILES_SOURCE="github.com/basvdkruijssen/claude-config"
+DOTFILES_SOURCE="github.com/basvdkruijssen/terminal-config"
 
 TOTAL_STEPS=7
 CURRENT_STEP=0
@@ -169,7 +169,7 @@ CHEZMOI_SRC="$HOME/.local/share/chezmoi"
 if [ -d "$CHEZMOI_SRC/.git" ]; then
   current_url=$(git -C "$CHEZMOI_SRC" remote get-url origin 2>/dev/null || true)
   case "$current_url" in
-    *claude-config*|"") ;;
+    *terminal-config*|*claude-config*|"") ;;
     *)
       echo "  WARNING: chezmoi's source dir ($CHEZMOI_SRC) is still tracking"
       echo "  $current_url, not this repo. 'chezmoi init' will NOT switch it"

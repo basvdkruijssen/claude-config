@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Guidance for working on this repo (`basvdkruijssen/claude-config`), not the
+Guidance for working on this repo (`basvdkruijssen/terminal-config`), not the
 global instructions it distributes (those live in `home/dot_claude/CLAUDE.md`).
 
 ## What this repo is
@@ -91,9 +91,10 @@ exists — e.g. a machine previously set up from the standalone `starship` repo
 this was merged from — it silently keeps that old remote and applies from it,
 with no error or warning of its own. Verified by simulating both cases with
 `HOME` pointed at a scratch directory. `scripts/setup.sh`/`setup.ps1` detect a
-source-dir remote that doesn't match `claude-config` and skip the `chezmoi
-apply` step with a warning instead of silently deploying stale dotfiles; see
-the "Migrating" note in `README.md` for the fix.
+source-dir remote that matches neither `terminal-config` nor its old name
+`claude-config` and skip the `chezmoi apply` step with a warning instead of
+silently deploying stale dotfiles; see the "Migrating" note in
+`docs/maintaining.md` for the fix.
 
 ## Gotcha: `Get-Content -Raw` on an empty file returns AutomationNull, not `$null`
 

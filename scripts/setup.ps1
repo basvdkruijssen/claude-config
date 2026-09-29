@@ -4,8 +4,8 @@
 # (via chezmoi). Safe to re-run.
 #
 # Usage:
-#   git clone https://github.com/basvdkruijssen/claude-config.git
-#   cd claude-config
+#   git clone https://github.com/basvdkruijssen/terminal-config.git
+#   cd terminal-config
 #   .\scripts\setup.ps1
 #
 # Needs neither elevation nor Developer Mode: nothing is symlinked. chezmoi
@@ -20,9 +20,9 @@ $ErrorActionPreference = "Stop"
 # setup.sh aborts under `set -e`. Needs PowerShell 7.4+.
 $PSNativeCommandUseErrorActionPreference = $true
 
-$MarketplaceSource = "basvdkruijssen/claude-config"
+$MarketplaceSource = "basvdkruijssen/terminal-config"
 $MarketplaceName = "bvdk-claude-config"
-$DotfilesSource = "github.com/basvdkruijssen/claude-config"
+$DotfilesSource = "github.com/basvdkruijssen/terminal-config"
 
 # Pinned Nerd Fonts release. The winget package (DEVCOM.JetBrainsMonoNerdFont)
 # lags upstream Nerd Fonts releases (still on v3.3.0 as of writing) and is
@@ -41,7 +41,7 @@ function Step {
     param([string]$Title)
     $script:CurrentStep++
     $percent = [int](($script:CurrentStep / $TotalSteps) * 100)
-    Write-Progress -Activity "claude-config setup" -Status "$Title ($script:CurrentStep/$TotalSteps)" -PercentComplete $percent
+    Write-Progress -Activity "terminal-config setup" -Status "$Title ($script:CurrentStep/$TotalSteps)" -PercentComplete $percent
     Write-Host ""
     Write-Host "== ${script:CurrentStep}/${TotalSteps}: ${Title} =="
 }
@@ -255,7 +255,7 @@ if (Test-Path (Join-Path $ChezmoiSrc ".git")) {
         $PSNativeCommandUseErrorActionPreference = $false
         git -C $ChezmoiSrc remote get-url origin 2>$null
     }
-    if ($currentUrl -and $currentUrl -notmatch "claude-config") {
+    if ($currentUrl -and $currentUrl -notmatch "claude-config|terminal-config") {
         Write-Warning "chezmoi's source dir ($ChezmoiSrc) is still tracking $currentUrl, not this repo. 'chezmoi init' will NOT switch it automatically."
         Write-Host "  If $ChezmoiSrc has no changes you care about (check with: git -C `"$ChezmoiSrc`" status), fix it with:"
         Write-Host "    Remove-Item -Recurse -Force `"$ChezmoiSrc`"; .\scripts\setup.ps1"
@@ -318,7 +318,7 @@ $settings["statusLine"] = @{
 $settings | ConvertTo-Json -Depth 20 | Set-Content -Path $SettingsPath -Encoding utf8
 Write-Host "  merged statusLine into $SettingsPath"
 
-Write-Progress -Activity "claude-config setup" -Completed
+Write-Progress -Activity "terminal-config setup" -Completed
 Write-Host ""
 Write-Host "Done. Restart Claude Code (exit, then run 'claude' again) to load the new plugins."
 Write-Host "Then, once per project repo: run /setup-matt-pocock-skills to pick its issue tracker."
