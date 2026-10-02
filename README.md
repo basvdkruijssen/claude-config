@@ -91,6 +91,7 @@ in `~`, or the next apply overwrites your change.
 ## More
 
 - [`docs/starship-prompt.md`](./docs/starship-prompt.md): prompt design and chezmoi usage
+- [`docs/skills.md`](./docs/skills.md): installed skills, their sources and how to update them
 - [`docs/maintaining.md`](./docs/maintaining.md): adding skills, testing `setup.ps1`
 - [`CLAUDE.md`](./CLAUDE.md): repo architecture and gotchas
 - [`NOTICE.md`](./NOTICE.md): third-party attribution
